@@ -21,11 +21,17 @@ Simprint is a desktop workspace for browser-driven operations, designed to organ
 
 It is intended for individuals and teams that need to maintain multiple browser work environments over time, including scenarios such as cross-border operations, account management, automated task execution, and shared resource coordination. With a unified desktop entry point, Simprint helps manage environment lifecycles more consistently, connect external resources, and build reusable workflows around daily operations.
 
-## Direction
+## Status
+
+Simprint was originally developed as a commercial product. It is now being transitioned into an open-source project, and the current open-source edition is intended to provide all core functionality without feature gating.
+
+Some billing-related UI, upgrade prompts, or commercial entry points may still appear in the product as remnants of the previous commercial model. These interfaces are being phased out and will be removed over time, while the related functionality will remain openly available in the community edition.
+
+## Outlook
 
 Simprint is being developed toward a more capable and production-ready browser workspace. Our current direction is focused on expanding AI-assisted workflows, improving support for private enterprise deployments, and continuously refining product stability, reliability, and overall usability.
 
-## Data Responsibility
+## Data Use
 
 Most users of the open-source edition will rely on community-hosted services, and related data may therefore be stored on community-managed servers. The community does not proactively disclose user data to third parties, but each user remains responsible for assessing their own data risk and should avoid submitting sensitive information whenever possible.
 
