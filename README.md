@@ -13,13 +13,53 @@
   </p>
 </div>
 
+<p align="center">
+  <img src="./docs/assets/demo-gif.gif" alt="Simprint product demo" width="100%" />
+</p>
+
 ---
 
 ## Introduction
 
-Simprint is a desktop workspace for browser-driven operations, designed to organize local environments, proxy resources, and automation workflows in one place.
+Simprint is a desktop workspace for browser-driven operations, designed to organize browser profiles, proxy resources, automation flows, and local runtime capabilities in one place.
 
 It is intended for individuals and teams that need to maintain multiple browser work environments over time, including scenarios such as cross-border operations, account management, automated task execution, and shared resource coordination. With a unified desktop entry point, Simprint helps manage environment lifecycles more consistently, connect external resources, and build reusable workflows around daily operations.
+
+## Features
+
+- **Profiles**: Organize multiple browser environments, account groupings, and workspace states from one desktop entry point.
+- **Proxy**: Connect and manage proxy resources used by different environments and operational flows.
+- **Automation**: Build and run repeatable browser workflows for daily operations and task execution.
+- **Syncer**: Coordinate multiple running environments, choose a master session, and mirror interaction flows across selected windows.
+- **Fingerprint**: Manage environment-level browser characteristics and continue refining fingerprint-related capabilities over time.
+- **RPC bridge**: Use the built-in Tauri command bridge between the React frontend and Rust services for desktop-native operations and orchestration.
+- **Local API**: Expose workspace resources such as environments, proxies, tags, groups, and browser kernels through a local runtime API.
+- **MCP**: Run a local Model Context Protocol service so external AI clients can connect to Simprint-managed tools and workspace resources.
+- **Local desktop runtime**: Run the workspace through a local Tauri + Rust desktop runtime with integrated frontend and system-level services.
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 20+
+- `pnpm`
+- Rust toolchain
+- Tauri system prerequisites for your platform
+
+### Run locally
+
+```bash
+pnpm install
+cargo tauri dev --features development
+```
+
+## Build from source
+
+Build a production package:
+
+```bash
+cargo tauri build --features production
+```
 
 ## Status
 
@@ -27,9 +67,12 @@ Simprint was originally developed as a commercial product. It is now being trans
 
 Some billing-related UI, upgrade prompts, or commercial entry points may still appear in the product as remnants of the previous commercial model. These interfaces are being phased out and will be removed over time, while the related functionality will remain openly available in the community edition.
 
-## Outlook
+## Roadmap
 
-Simprint is being developed toward a more capable and production-ready browser workspace. Our current direction is focused on expanding AI-assisted workflows, improving support for private enterprise deployments, and continuously refining product stability, reliability, and overall usability.
+- **AI workflows**: Expand AI-assisted operational flows and agent-oriented task orchestration.
+- **Private deployment**: Improve support for self-hosted and enterprise-controlled deployments.
+- **Fingerprint research**: Continue refining browser environment controls, compatibility, and research depth.
+- **Automation SDK**: Provide a more reusable interface for building and integrating automation capabilities.
 
 ## Data Use
 
