@@ -2,7 +2,7 @@
 set -euo pipefail
 
 IMAGE="${SIMPRINT_SERVER_IMAGE:-ghcr.io/simprint/simprint-server:latest}"
-TARGET_DIR="${1:-$PWD/simprint-self-hosted}"
+TARGET_DIR="$PWD/simprint-self-hosted"
 CONFIG_DIR="$TARGET_DIR/configs"
 COMPOSE_FILE="$TARGET_DIR/docker-compose.yml"
 CONFIG_FILE="$CONFIG_DIR/config.toml"
@@ -16,6 +16,7 @@ SMTP_SERVER="${SMTP_SERVER:-}"
 SMTP_USERNAME="${SMTP_USERNAME:-}"
 SMTP_PASSWORD="${SMTP_PASSWORD:-}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-}"
+TTY_DEVICE="/dev/tty"
 
 check_command() {
   command -v "$1" >/dev/null 2>&1
@@ -45,16 +46,16 @@ require_value() {
     return 0
   fi
 
-  if [ ! -t 0 ]; then
-    echo "Error: missing required value for $var_name. Set it before running this script." >&2
+  if [ ! -r "$TTY_DEVICE" ]; then
+    echo "Error: missing required value for $var_name. No interactive terminal available." >&2
     exit 1
   fi
 
   if [ "$secret" = "true" ]; then
-    read -r -s -p "$prompt_text: " current_value
+    read -r -s -p "$prompt_text: " current_value <"$TTY_DEVICE"
     echo
   else
-    read -r -p "$prompt_text: " current_value
+    read -r -p "$prompt_text: " current_value <"$TTY_DEVICE"
   fi
 
   if [ -z "$current_value" ]; then
@@ -76,12 +77,12 @@ require_secret_with_default() {
     return 0
   fi
 
-  if [ ! -t 0 ]; then
+  if [ ! -r "$TTY_DEVICE" ]; then
     printf -v "$var_name" '%s' "$default_value"
     return 0
   fi
 
-  read -r -p "[$prompt_text, default:$default_value][Y/n]? " use_default
+  read -r -p "[$prompt_text, default:$default_value][Y/n]? " use_default <"$TTY_DEVICE"
   case "${use_default:-Y}" in
     Y|y|"")
       printf -v "$var_name" '%s' "$default_value"
@@ -89,7 +90,7 @@ require_secret_with_default() {
       ;;
   esac
 
-  read -r -s -p "$prompt_text: " current_value
+  read -r -s -p "$prompt_text: " current_value <"$TTY_DEVICE"
   echo
 
   if [ -z "$current_value" ]; then
