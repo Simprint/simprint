@@ -14,10 +14,10 @@ on:
 jobs:
   build:
     # Windows 专用构建 Job：
-    # - 仅在带有 Windows 标签的 self-hosted Runner 上运行
+    # - 固定运行在 GitHub-hosted Windows Server 2025 Runner 上
     # - 不适用于 macOS / Linux 等其他平台
     # 如需支持多平台，请为不同平台创建独立的 workflow 或 job
-    runs-on: [self-hosted, Windows]
+    runs-on: windows-2025
     permissions:
       contents: write
 
@@ -53,6 +53,56 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Ensure AWS CLI
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          if (Get-Command aws -ErrorAction SilentlyContinue) {
+            aws --version
+            exit 0
+          }
+
+          $msiPath = Join-Path $env:RUNNER_TEMP "AWSCLIV2.msi"
+          Invoke-WebRequest "https://awscli.amazonaws.com/AWSCLIV2.msi" -OutFile $msiPath
+          Start-Process msiexec.exe -Wait -ArgumentList "/i `"$msiPath`" /qn"
+
+          @(
+            "C:\Program Files\Amazon\AWSCLIV2",
+            "C:\Program Files\Amazon\AWSCLIV2\bin"
+          ) | ForEach-Object {
+            if (Test-Path $_) {
+              Add-Content -Path $env:GITHUB_PATH -Value $_
+            }
+          }
+
+          $awsExe = Get-Command aws -ErrorAction SilentlyContinue
+          if (-not $awsExe) {
+            $awsInstalled = Get-ChildItem "C:\Program Files\Amazon" -Filter aws.exe -Recurse -ErrorAction SilentlyContinue |
+              Select-Object -First 1
+            if (-not $awsInstalled) {
+              Write-Error "AWS CLI installation completed, but aws.exe was not found."
+            }
+            & $awsInstalled.FullName --version
+            exit 0
+          }
+
+          aws --version
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -112,8 +162,8 @@ jobs:
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
-          # 使用统一的 GT_TOKEN 作为凭证来源
-          GITHUB_TOKEN: ${{ secrets.GT_TOKEN }}
+          # 优先使用 GT_TOKEN；未配置时回退到 GitHub 自动注入的 token
+          GITHUB_TOKEN: ${{ secrets.GT_TOKEN || github.token }}
           # Optional: enable updater signing / release signing if you configure them later
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
@@ -128,7 +178,7 @@ jobs:
       - name: Publish GitHub release assets
         if: github.event_name == 'push'
         env:
-          GH_TOKEN: ${{ secrets.GT_TOKEN }}
+          GH_TOKEN: ${{ secrets.GT_TOKEN || github.token }}
           GH_REPO: ${{ github.repository }}
         run: node deploy/publish-github-release.mjs
 
@@ -190,7 +240,7 @@ jobs:
           aws s3 cp "latest.json" $dest --endpoint-url $endpoint --region auto
 
       - name: Upload latest.json artifact (manual runs)
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && hashFiles('latest.json') != ''
         uses: actions/upload-artifact@v4
         with:
           name: latest-json
