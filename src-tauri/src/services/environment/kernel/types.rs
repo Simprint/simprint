@@ -125,6 +125,7 @@ pub struct BatchLaunchRequest {
     pub exe_path: String,
     pub env_uuid: String,
     pub cache_path: String,
+    pub urls: Option<Vec<String>>,
     pub proxy: Option<ProxyConfig>,
     pub fingerprint_config: Option<crate::infrastructure::runtime::FingerprintConfig>,
     pub accounts: Option<Vec<AccountInfo>>,

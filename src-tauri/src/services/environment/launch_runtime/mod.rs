@@ -19,7 +19,7 @@ use crate::{
 use self::{
     detail::get_environment_launch_detail,
     fingerprint::build_fingerprint_config,
-    kernel::resolve_kernel_launch,
+    kernel::{get_window_info, resolve_kernel_launch},
     paths::get_launch_paths,
     types::{EnvironmentProxyLike, LaunchPaths},
 };
@@ -50,6 +50,7 @@ impl EnvironmentLaunchRuntimeService {
             request.exe_path,
             request.env_uuid,
             request.cache_path,
+            request.urls,
             request.proxy,
             request.fingerprint_config,
             request.accounts,
@@ -107,6 +108,7 @@ impl EnvironmentLaunchRuntimeService {
             exe_path: resolved_kernel.exe_path,
             env_uuid: env.uuid.clone(),
             cache_path: launch_paths.cache_path.clone(),
+            urls: normalize_urls(detail.config.as_ref()),
             proxy: build_tauri_proxy_config(detail.proxy),
             fingerprint_config: Some(fingerprint_config),
             accounts: normalize_accounts(detail.accounts),
@@ -135,4 +137,18 @@ fn normalize_accounts(accounts: Option<Vec<AccountInfo>>) -> Option<Vec<AccountI
 
 fn normalize_extensions(extensions: Option<Vec<ExtensionInfo>>) -> Option<Vec<ExtensionInfo>> {
     extensions.filter(|items| !items.is_empty())
+}
+
+fn normalize_urls(config: Option<&serde_json::Value>) -> Option<Vec<String>> {
+    let urls = get_window_info(config)
+        .get("urls")
+        .and_then(serde_json::Value::as_array)?
+        .iter()
+        .filter_map(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|url| !url.is_empty())
+        .map(|url| url.to_string())
+        .collect::<Vec<_>>();
+
+    if urls.is_empty() { None } else { Some(urls) }
 }
