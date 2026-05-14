@@ -117,23 +117,36 @@ require_secret_with_default() {
 create_console_api_key() {
   local output=""
   local api_key_line=""
+  local attempt=1
+  local max_attempts=20
 
-  output=$(
-    cd "$TARGET_DIR"
-    "${COMPOSE_CMD[@]}" run --rm -T --no-deps simprint-console-gateway \
-      --config /app/configs/console.toml apikey create --name "extension-sync"
-  )
+  while [ "$attempt" -le "$max_attempts" ]; do
+    if output=$(
+      cd "$TARGET_DIR"
+      "${COMPOSE_CMD[@]}" run --rm -T --no-deps simprint-console-gateway \
+        --config /app/configs/console.toml apikey create --name "extension-sync" 2>&1
+    ); then
+      api_key_line=$(printf '%s\n' "$output" | sed -n 's/^[[:space:]]*X-API-KEY: //p' | tail -n 1)
 
-  api_key_line=$(printf '%s\n' "$output" | sed -n 's/^[[:space:]]*X-API-KEY: //p' | tail -n 1)
+      if [ -n "$api_key_line" ] && [ "${api_key_line#*:}" != "$api_key_line" ]; then
+        EXTENSION_SYNC_API_KEY_ID="${api_key_line%%:*}"
+        EXTENSION_SYNC_API_KEY_SECRET="${api_key_line#*:}"
+        return 0
+      fi
 
-  if [ -z "$api_key_line" ] || [ "${api_key_line#*:}" = "$api_key_line" ]; then
-    echo "Error: failed to create Console API key for extension sync." >&2
-    echo "$output" >&2
-    exit 1
-  fi
+      echo "Error: Console API key command succeeded but returned an unexpected payload." >&2
+      echo "$output" >&2
+      exit 1
+    fi
 
-  EXTENSION_SYNC_API_KEY_ID="${api_key_line%%:*}"
-  EXTENSION_SYNC_API_KEY_SECRET="${api_key_line#*:}"
+    echo "Waiting for simprint-console-gateway to finish database initialization (attempt $attempt/$max_attempts)..."
+    sleep 3
+    attempt=$((attempt + 1))
+  done
+
+  echo "Error: failed to create Console API key for extension sync after $max_attempts attempts." >&2
+  echo "$output" >&2
+  exit 1
 }
 
 if ! check_command docker; then
