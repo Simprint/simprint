@@ -356,8 +356,6 @@ services:
       POSTGRES_DB: simprintdb
       POSTGRES_USER: simprint
       POSTGRES_PASSWORD: $POSTGRES_PASSWORD
-    ports:
-      - "5432:5432"
     volumes:
       - simprint-postgres-data:/var/lib/postgresql/data
     healthcheck:
