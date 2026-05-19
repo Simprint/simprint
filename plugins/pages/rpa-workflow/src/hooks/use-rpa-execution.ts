@@ -1,6 +1,11 @@
 ﻿import { useCallback, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { extractWorkflowSchema, getRpaTaskDetail, type RpaTaskDetailDto } from '../api';
+import {
+  extractTaskRunOptions,
+  extractWorkflowSchema,
+  getRpaTaskDetail,
+  type RpaTaskDetailDto,
+} from '../api';
 import type { RpaTask, RpaWorkflowStep } from '../types';
 import { RpaRunner } from '../runtime/runner';
 import { CdpBrowserAdapter } from '../runtime/cdp-browser-adapter';
@@ -230,6 +235,7 @@ export function useRpaExecution(params: UseRpaExecutionParams): UseRpaExecutionR
       toast.error('任务流程数据无效');
       return;
     }
+    const runOptions = extractTaskRunOptions(pendingExecution.detail);
 
     if (!pendingExecution.detail.environment_uuids?.length) {
       toast.error('请先绑定环境后再执行');
@@ -368,7 +374,7 @@ export function useRpaExecution(params: UseRpaExecutionParams): UseRpaExecutionR
             break;
           }
         } finally {
-          if (startedByRuntime) {
+          if (startedByRuntime && runOptions.closeBrowserOnComplete) {
             await stopEnvironmentRuntime(envUuid).catch(() => undefined);
           }
         }

@@ -45,6 +45,7 @@ export interface TaskConfig {
   timeout: number;
   concurrency: number;
   stopOnError: boolean;
+  closeBrowserOnComplete: boolean;
   notifyOnComplete: boolean;
   notifyOnError: boolean;
 }
@@ -215,6 +216,7 @@ export function TaskSettingsForm({ config, onConfigChange }: TaskSettingsFormPro
     `超时 ${config.timeout}s`,
     `重试 ${config.retryCount} 次`,
     config.stopOnError ? '出错即停止' : '允许继续执行',
+    config.closeBrowserOnComplete ? '结束后关闭浏览器' : '结束后保留浏览器',
   ].join(' · ');
 
   return (
@@ -473,6 +475,12 @@ export function TaskSettingsForm({ config, onConfigChange }: TaskSettingsFormPro
                         description="流程遇到错误后立即停止，避免继续执行后续步骤。"
                         checked={config.stopOnError}
                         onCheckedChange={(value) => handleChange('stopOnError', value)}
+                      />
+                      <StrategySwitch
+                        label="结束后关闭浏览器"
+                        description="仅影响正式执行。启用后，任务执行完成会自动关闭本次启动的浏览器。"
+                        checked={config.closeBrowserOnComplete}
+                        onCheckedChange={(value) => handleChange('closeBrowserOnComplete', value)}
                       />
                       <StrategySwitch
                         label="完成时通知"

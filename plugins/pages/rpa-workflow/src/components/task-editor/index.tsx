@@ -74,6 +74,7 @@ function createDefaultTaskConfig(): TaskConfig {
     timeout: 300,
     concurrency: 1,
     stopOnError: true,
+    closeBrowserOnComplete: false,
     notifyOnComplete: false,
     notifyOnError: false,
   };

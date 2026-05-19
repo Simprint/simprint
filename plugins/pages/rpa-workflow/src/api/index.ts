@@ -66,6 +66,10 @@ export interface RpaTaskInputVariable {
   required: boolean;
 }
 
+export interface RpaTaskRunOptions {
+  closeBrowserOnComplete: boolean;
+}
+
 export interface PaginatedRpaTaskList {
   items: RpaTask[];
   total: number;
@@ -140,6 +144,7 @@ interface StoredWorkflowMetaVariable {
 interface StoredWorkflowMeta {
   start_step_id?: string | null;
   global_variables?: StoredWorkflowMetaVariable[];
+  close_browser_on_complete?: boolean;
 }
 
 function normalizeStatus(status: string): RpaTask['status'] {
@@ -349,6 +354,14 @@ export function extractTaskInputVariables(detail: RpaTaskDetailDto): RpaTaskInpu
       required: variable?.required === true,
     }))
     .filter((variable) => variable.name && variable.promptOnRun);
+}
+
+export function extractTaskRunOptions(detail: RpaTaskDetailDto): RpaTaskRunOptions {
+  const workflowMeta = extractStoredWorkflowMeta(detail);
+
+  return {
+    closeBrowserOnComplete: workflowMeta?.close_browser_on_complete === true,
+  };
 }
 
 export function extractWorkflowSchema(detail: RpaTaskDetailDto): RpaWorkflowSchema | null {

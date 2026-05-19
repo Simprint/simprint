@@ -44,6 +44,7 @@ interface StoredWorkflowMeta {
     prompt_on_run?: boolean;
     required?: boolean;
   }>;
+  close_browser_on_complete?: boolean;
   start_position?: {
     x?: number;
     y?: number;
@@ -450,6 +451,7 @@ export function buildTaskPayload(
               required: variable.promptOnRun === true && variable.required === true,
             }))
             .filter((variable) => variable.name),
+          close_browser_on_complete: config.closeBrowserOnComplete === true,
           start_position: specialPositions.start,
           end_position: specialPositions.end,
         },
@@ -518,6 +520,7 @@ export function mapTaskDetailToEditorState(detail: RpaTaskDetailDto): EditorStat
     timeout: detail.task.timeout ?? 300,
     concurrency: detail.task.concurrency ?? 1,
     stopOnError: detail.task.stop_on_error ?? true,
+    closeBrowserOnComplete: storedWorkflowMeta?.close_browser_on_complete === true,
     notifyOnComplete: detail.task.notify_on_complete ?? false,
     notifyOnError: detail.task.notify_on_error ?? true,
   };
@@ -610,6 +613,7 @@ export function mapPortableTaskToEditorState(document: PortableRpaTaskDocument):
     timeout: document.task.timeout ?? 300,
     concurrency: document.task.concurrency ?? 1,
     stopOnError: document.task.stop_on_error ?? true,
+    closeBrowserOnComplete: storedWorkflowMeta?.close_browser_on_complete === true,
     notifyOnComplete: document.task.notify_on_complete ?? false,
     notifyOnError: document.task.notify_on_error ?? true,
   };
