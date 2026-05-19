@@ -5,6 +5,7 @@ import {
   Keyboard,
   Clock,
   GitBranch,
+  LogOut,
   PanelsTopLeft,
   Repeat,
   Camera,
@@ -107,6 +108,14 @@ const components: ComponentItem[] = [
     icon: Repeat,
     category: 'flow',
     description: '重复执行一组操作',
+  },
+  {
+    id: 'break-loop',
+    type: 'break_loop',
+    name: '退出循环',
+    icon: LogOut,
+    category: 'flow',
+    description: '立即退出当前循环并继续后续流程',
   },
   // 数据操作
   {

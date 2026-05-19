@@ -84,6 +84,17 @@ function createDefaultScriptVariableName() {
   return `script_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function findInvalidBreakLoopStep(steps: FlowStep[]): FlowStep | null {
+  const loopIds = new Set(steps.filter((step) => step.type === 'loop').map((step) => step.id));
+  return (
+    steps.find(
+      (step) =>
+        step.type === 'break_loop' &&
+        (!step.parentLoopId || !loopIds.has(step.parentLoopId))
+    ) ?? null
+  );
+}
+
 type RunStatus = 'idle' | 'starting' | 'running' | 'success' | 'failed' | 'stopping' | 'stopped';
 
 interface RunStepItem {
@@ -92,6 +103,8 @@ interface RunStepItem {
   type: string;
   status: RpaRunnerStepStatus;
   error?: string;
+  loopIteration?: number;
+  loopTotal?: number;
 }
 
 function buildAnonymousProxyConfig(
@@ -161,6 +174,19 @@ export function TaskEditor() {
   );
   const stepErrorMap = useMemo(
     () => Object.fromEntries(runStepItems.map((step) => [step.id, step.error ?? ''])),
+    [runStepItems]
+  );
+  const loopProgressMap = useMemo(
+    () =>
+      Object.fromEntries(
+        runStepItems.map((step) => [
+          step.id,
+          {
+            current: step.loopIteration,
+            total: step.loopTotal,
+          },
+        ])
+      ),
     [runStepItems]
   );
   const activeStepId = useMemo(
@@ -278,6 +304,12 @@ export function TaskEditor() {
       if (error === 'NO_ACTIVE_TAB_AFTER_CLOSE') {
         return t('editor.errors.noActiveTabAfterClose', {
           defaultValue: '关闭标签页后未找到可用的活动标签页，请重新运行。',
+        });
+      }
+
+      if (error === 'BREAK_LOOP_OUTSIDE_LOOP') {
+        return t('editor.errors.breakLoopOutside', {
+          defaultValue: '退出循环节点只能在循环区域内使用。',
         });
       }
 
@@ -452,6 +484,15 @@ export function TaskEditor() {
       sourceHandle?: string | null,
       parentLoopId?: string | null
     ) => {
+      if (component.type === 'break_loop' && !parentLoopId) {
+        toast.warning(
+          t('editor.errors.breakLoopOutside', {
+            defaultValue: '退出循环节点只能在循环区域内使用。',
+          })
+        );
+        return;
+      }
+
       const newStepId = crypto.randomUUID();
       let shouldAttachToSource = false;
       let branchKey: 'true' | 'false' | null = null;
@@ -595,14 +636,29 @@ export function TaskEditor() {
         const deletedStep = prev.find((step) => step.id === stepId);
         const fallbackStartId = deletedStep?.isStart ? deletedStep.nextStepId ?? null : null;
         const deletedLoopPosition = deletedStep?.type === 'loop' ? deletedStep.position ?? { x: 0, y: 0 } : null;
+        const deletedStepIds = new Set(
+          prev
+            .filter(
+              (step) =>
+                step.id === stepId ||
+                (deletedStep?.type === 'loop' &&
+                  step.parentLoopId === stepId &&
+                  step.type === 'break_loop')
+            )
+            .map((step) => step.id)
+        );
 
         return prev
-          .filter((step) => step.id !== stepId)
+          .filter((step) => !deletedStepIds.has(step.id))
           .map((step) => {
-            const nextStepId = step.nextStepId === stepId ? null : step.nextStepId ?? null;
+            const nextStepId =
+              step.nextStepId && deletedStepIds.has(step.nextStepId) ? null : step.nextStepId ?? null;
             const currentBranches = (step.config.branches as Record<string, unknown> | undefined) ?? {};
             const branches = Object.fromEntries(
-              Object.entries(currentBranches).map(([key, value]) => [key, value === stepId ? null : value])
+              Object.entries(currentBranches).map(([key, value]) => [
+                key,
+                typeof value === 'string' && deletedStepIds.has(value) ? null : value,
+              ])
             );
             const isStart = fallbackStartId ? step.id === fallbackStartId : step.isStart ?? false;
             const wasInsideDeletedLoop = step.parentLoopId === stepId && deletedLoopPosition;
@@ -651,6 +707,15 @@ export function TaskEditor() {
       return;
     }
 
+    if (findInvalidBreakLoopStep(steps)) {
+      toast.warning(
+        t('editor.errors.breakLoopOutside', {
+          defaultValue: '退出循环节点只能在循环区域内使用。',
+        })
+      );
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = buildTaskPayload(config, steps);
@@ -672,7 +737,13 @@ export function TaskEditor() {
     setRunStepItems((prev) =>
       prev.map((step) =>
         step.id === event.stepId
-          ? { ...step, status: event.status, error: normalizeRunError(event.error) }
+          ? {
+              ...step,
+              status: event.status,
+              error: normalizeRunError(event.error),
+              loopIteration: event.loopIteration ?? step.loopIteration,
+              loopTotal: event.loopTotal ?? step.loopTotal,
+            }
           : step
       )
     );
@@ -737,6 +808,15 @@ export function TaskEditor() {
       return;
     }
 
+    if (findInvalidBreakLoopStep(steps)) {
+      toast.warning(
+        t('editor.errors.breakLoopOutside', {
+          defaultValue: '退出循环节点只能在循环区域内使用。',
+        })
+      );
+      return;
+    }
+
     const workflow = buildWorkflowSchema(config, steps);
     if (!workflow.start_step_id) {
       toast.warning(t('editor.errors.startPathRequired'));
@@ -750,6 +830,13 @@ export function TaskEditor() {
         type: step.type,
         status: 'pending',
         error: undefined,
+        loopIteration: undefined,
+        loopTotal:
+          step.type === 'loop' &&
+          typeof step.config?.iterations === 'number' &&
+          Number.isFinite(step.config.iterations)
+            ? Math.max(1, Math.trunc(step.config.iterations))
+            : undefined,
       }))
     );
     setActiveRunEnvUuid(null);
@@ -922,6 +1009,7 @@ export function TaskEditor() {
           runStatus={runStatus}
           stepStatuses={stepStatusMap}
           stepErrors={stepErrorMap}
+          stepLoopProgress={loopProgressMap}
         />
         <div className="w-80 border-l border-border bg-background flex flex-col min-h-0 overflow-hidden">
           <Accordion

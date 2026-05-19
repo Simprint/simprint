@@ -75,6 +75,7 @@ interface FlowCanvasProps {
   runStatus?: 'idle' | 'starting' | 'running' | 'success' | 'failed' | 'stopping' | 'stopped';
   stepStatuses?: Record<string, RpaRunnerStepStatus>;
   stepErrors?: Record<string, string>;
+  stepLoopProgress?: Record<string, { current?: number; total?: number }>;
 }
 
 const nodeTypes: NodeTypes = {
@@ -174,6 +175,10 @@ function getConditionBranches(step: FlowStep): Record<'true' | 'false', string |
 function getNextStepIds(step: FlowStep): string[] {
   if (step.type === 'condition') {
     return Object.values(getConditionBranches(step)).filter((value): value is string => Boolean(value));
+  }
+
+  if (step.type === 'break_loop') {
+    return [];
   }
 
   return step.nextStepId ? [step.nextStepId] : [];
@@ -278,6 +283,10 @@ function summarizeStep(step: FlowStep, t: TFunction<'rpa'>): string {
     }
     case 'loop':
       return t('editor.stepSubtitleDefaults.loop');
+    case 'break_loop':
+      return t('editor.stepSubtitleDefaults.breakLoop', {
+        defaultValue: '满足条件时立即退出当前循环',
+      });
     case 'notify':
       return t('editor.stepSubtitleDefaults.notify');
     case 'screenshot': {
@@ -374,6 +383,10 @@ function buildGraphEdges(steps: FlowStep[], t: TFunction<'rpa'>): Edge[] {
       continue;
     }
 
+    if (step.type === 'break_loop') {
+      continue;
+    }
+
     if (step.nextStepId) {
       edges.push(createBaseEdge(step.id, step.nextStepId));
       continue;
@@ -454,7 +467,8 @@ function stepsToNodes(
   t: TFunction<'rpa'>,
   runStatus: FlowCanvasProps['runStatus'],
   stepStatuses: Record<string, RpaRunnerStepStatus>,
-  stepErrors: Record<string, string>
+  stepErrors: Record<string, string>,
+  stepLoopProgress: Record<string, { current?: number; total?: number }>
 ): Node[] {
   const nodes: Node[] = [];
   const loopStepIds = new Set(steps.filter((step) => isLoopStep(step)).map((step) => step.id));
@@ -479,6 +493,12 @@ function stepsToNodes(
           label: step.name,
           subtitle: summarizeStep(step, t),
           enabled: step.enabled,
+          iterations:
+            typeof step.config.iterations === 'number' && Number.isFinite(step.config.iterations)
+              ? step.config.iterations
+              : 3,
+          currentIteration: stepLoopProgress[step.id]?.current,
+          totalIterations: stepLoopProgress[step.id]?.total,
           runStatus: stepStatuses[step.id] ?? 'pending',
           errorSummary: stepErrors[step.id] ?? '',
           childCount: steps.filter((candidate) => candidate.parentLoopId === step.id).length,
@@ -535,6 +555,7 @@ function FlowCanvasInner({
   runStatus = 'idle',
   stepStatuses = {},
   stepErrors = {},
+  stepLoopProgress = {},
 }: FlowCanvasProps) {
   const { t } = useTranslation('rpa');
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -553,7 +574,16 @@ function FlowCanvasInner({
   };
 
   const [nodes, setNodes, onNodesChange] = useNodesState(
-    stepsToNodes(steps, onDeleteStep, initialSpecialPositions, t, runStatus, stepStatuses, stepErrors)
+    stepsToNodes(
+      steps,
+      onDeleteStep,
+      initialSpecialPositions,
+      t,
+      runStatus,
+      stepStatuses,
+      stepErrors,
+      stepLoopProgress
+    )
   );
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(buildGraphEdges(steps, t));
 
@@ -564,10 +594,19 @@ function FlowCanvasInner({
 
   useEffect(() => {
     setNodes(
-      stepsToNodes(steps, onDeleteStep, specialPositionsRef.current, t, runStatus, stepStatuses, stepErrors)
+      stepsToNodes(
+        steps,
+        onDeleteStep,
+        specialPositionsRef.current,
+        t,
+        runStatus,
+        stepStatuses,
+        stepErrors,
+        stepLoopProgress
+      )
     );
     setEdges(buildGraphEdges(steps, t));
-  }, [steps, onDeleteStep, setNodes, setEdges, t, runStatus, stepStatuses, stepErrors]);
+  }, [steps, onDeleteStep, setNodes, setEdges, t, runStatus, stepStatuses, stepErrors, stepLoopProgress]);
 
 
 const styledEdges = useMemo(
@@ -592,6 +631,8 @@ const styledEdges = useMemo(
           return;
         }
       } else if (!sourceStep) {
+        return;
+      } else if (sourceStep.type === 'break_loop') {
         return;
       } else if (sourceStep.type === 'condition') {
         const branchKey = sourceHandle === 'branch-false' ? 'false' : 'true';
@@ -757,28 +798,29 @@ const styledEdges = useMemo(
         ? steps.find((step) => step.id === draggedStep.parentLoopId && isLoopStep(step)) ?? null
         : null;
       const targetLoop = findContainingLoopStep(steps, hitPosition, null) ?? sourceLoop;
+      const effectiveTargetLoop = draggedStep.type === 'break_loop' ? targetLoop ?? sourceLoop : targetLoop;
 
-      const targetLoopChildCount = targetLoop
-        ? steps.filter((step) => step.parentLoopId === targetLoop.id && step.id !== node.id).length + 1
+      const targetLoopChildCount = effectiveTargetLoop
+        ? steps.filter((step) => step.parentLoopId === effectiveTargetLoop.id && step.id !== node.id).length + 1
         : 0;
       const pointerFlowPosition = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-      const relativeX = targetLoop
-        ? Math.max(LOOP_REGION_PADDING_X, pointerFlowPosition.x - (targetLoop.position?.x ?? 0) - DEFAULT_STEP_WIDTH / 2)
+      const relativeX = effectiveTargetLoop
+        ? Math.max(LOOP_REGION_PADDING_X, pointerFlowPosition.x - (effectiveTargetLoop.position?.x ?? 0) - DEFAULT_STEP_WIDTH / 2)
         : 0;
-      const relativeY = targetLoop
-        ? Math.max(LOOP_REGION_CONTENT_TOP, pointerFlowPosition.y - (targetLoop.position?.y ?? 0) - DEFAULT_STEP_HEIGHT / 2)
+      const relativeY = effectiveTargetLoop
+        ? Math.max(LOOP_REGION_CONTENT_TOP, pointerFlowPosition.y - (effectiveTargetLoop.position?.y ?? 0) - DEFAULT_STEP_HEIGHT / 2)
         : 0;
 
-      const targetLoopNextDimensions = targetLoop
+      const targetLoopNextDimensions = effectiveTargetLoop
         ? (() => {
-            const dimensions = getLoopAutoDimensions(targetLoop, targetLoopChildCount);
+            const dimensions = getLoopAutoDimensions(effectiveTargetLoop, targetLoopChildCount);
             return {
-              width: getLoopExpandedWidthForChild(targetLoop, relativeX),
-              height: Math.max(dimensions.height, getLoopExpandedHeightForChild(targetLoop, relativeY)),
+              width: getLoopExpandedWidthForChild(effectiveTargetLoop, relativeX),
+              height: Math.max(dimensions.height, getLoopExpandedHeightForChild(effectiveTargetLoop, relativeY)),
             };
           })()
         : null;
-      const desiredAbsolutePosition = targetLoop
+      const desiredAbsolutePosition = effectiveTargetLoop
         ? {
             x: pointerFlowPosition.x - DEFAULT_STEP_WIDTH / 2,
             y: pointerFlowPosition.y - DEFAULT_STEP_HEIGHT / 2,
@@ -786,7 +828,7 @@ const styledEdges = useMemo(
         : absolutePosition;
 
       const updatedSteps = steps.map((step) => {
-        if (targetLoop && step.id === targetLoop.id && targetLoopNextDimensions) {
+        if (effectiveTargetLoop && step.id === effectiveTargetLoop.id && targetLoopNextDimensions) {
           return {
             ...step,
             config: {
@@ -801,15 +843,15 @@ const styledEdges = useMemo(
           return step;
         }
 
-        if (targetLoop && targetLoopNextDimensions) {
+        if (effectiveTargetLoop && targetLoopNextDimensions) {
           return {
             ...step,
-            parentLoopId: targetLoop.id,
+            parentLoopId: effectiveTargetLoop.id,
             position: toLoopChildPosition(
               {
-                ...targetLoop,
+                ...effectiveTargetLoop,
                 config: {
-                  ...targetLoop.config,
+                  ...effectiveTargetLoop.config,
                   loopWidth: targetLoopNextDimensions.width,
                   loopHeight: targetLoopNextDimensions.height,
                 },
@@ -817,6 +859,10 @@ const styledEdges = useMemo(
               desiredAbsolutePosition
             ),
           };
+        }
+
+        if (draggedStep.type === 'break_loop') {
+          return step;
         }
 
         return {

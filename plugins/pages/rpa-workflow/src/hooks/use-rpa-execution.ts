@@ -116,6 +116,10 @@ function normalizeExecutionError(error: unknown): string {
     return '关闭标签页后未找到可用的活动标签页，请重新执行。';
   }
 
+  if (message === 'BREAK_LOOP_OUTSIDE_LOOP' || message.includes('BREAK_LOOP_OUTSIDE_LOOP')) {
+    return '退出循环节点只能在循环区域内使用。';
+  }
+
   if (message === 'TAB_TARGET_UNAVAILABLE' || message === 'RPA_BROWSER_NOT_FOUND') {
     return '当前标签页无法连接，请重新执行。';
   }

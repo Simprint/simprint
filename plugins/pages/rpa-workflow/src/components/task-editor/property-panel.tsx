@@ -398,7 +398,8 @@ export function PropertyPanel({ step, onUpdateStep, onDeleteStep, embedded = fal
                     value={(step.config.duration as number) || 1000}
                     min={0}
                     onChange={(value) => handleConfigChange('duration', value)}
-                    inputClassName="w-16 text-xs"
+                    className="w-full"
+                    inputClassName="w-full px-3 text-left text-xs"
                     decreaseLabel="减少等待时长"
                     increaseLabel="增加等待时长"
                   />
@@ -481,7 +482,8 @@ export function PropertyPanel({ step, onUpdateStep, onDeleteStep, embedded = fal
                 value={(step.config.iterations as number) || 3}
                 min={1}
                 onChange={(value) => handleConfigChange('iterations', Math.max(1, value))}
-                inputClassName="w-12 text-xs"
+                className="w-full"
+                inputClassName="w-full px-3 text-left text-xs"
                 decreaseLabel="减少循环次数"
                 increaseLabel="增加循环次数"
               />
@@ -490,6 +492,15 @@ export function PropertyPanel({ step, onUpdateStep, onDeleteStep, embedded = fal
               {t('editor.loop.regionHint', { defaultValue: '循环节点是一个区域容器。将需要重复执行的节点拖入该区域，区域外连线表示循环完成后继续执行。' })}
             </div>
           </>
+        );
+
+      case 'break_loop':
+        return (
+          <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-3 text-xs text-muted-foreground">
+            {t('editor.stepSubtitleDefaults.breakLoop', {
+              defaultValue: '满足条件时立即退出当前循环',
+            })}
+          </div>
         );
 
       case 'extract':

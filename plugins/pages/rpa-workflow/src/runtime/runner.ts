@@ -8,6 +8,8 @@ export interface RpaRunnerStepEvent {
   stepType: string;
   status: RpaRunnerStepStatus;
   error?: string;
+  loopIteration?: number;
+  loopTotal?: number;
 }
 
 export interface RpaRunnerCapturedTargetEvent {
@@ -35,6 +37,15 @@ export interface RpaRunnerOptions {
   onDataExtracted?: (event: RpaRunnerExtractedDataEvent) => void;
 }
 
+type StepExecutionResult =
+  | {
+      type: 'next';
+      nextStepId: string | null;
+    }
+  | {
+      type: 'break_loop';
+    };
+
 export class RpaRunner {
   constructor(private readonly adapter: BrowserAdapter) {}
 
@@ -49,7 +60,7 @@ export class RpaRunner {
 
     const stepMap = new Map(workflow.steps.map((step) => [step.id, step]));
     const screenshots: string[] = [];
-    const variables: Record<string, unknown> = {};
+    const variables = this.initializeWorkflowVariables(workflow);
     let currentStepId: string | null = workflow.start_step_id;
 
     await this.adapter.connect(session);
@@ -60,7 +71,12 @@ export class RpaRunner {
           throw new Error(`Unknown workflow step: ${currentStepId}`);
         }
 
-        currentStepId = await this.runStep(step, stepMap, screenshots, variables, options);
+        const result = await this.runStep(step, stepMap, screenshots, variables, options);
+        if (result.type === 'break_loop') {
+          throw new Error('BREAK_LOOP_OUTSIDE_LOOP');
+        }
+
+        currentStepId = result.nextStepId;
       }
     } finally {
       this.adapter.close();
@@ -75,7 +91,7 @@ export class RpaRunner {
     screenshots: string[],
     variables: Record<string, unknown>,
     options?: RpaRunnerOptions
-  ): Promise<string | null> {
+  ): Promise<StepExecutionResult> {
     options?.onStepStatusChange?.({
       stepId: step.id,
       stepType: step.type,
@@ -417,6 +433,15 @@ export class RpaRunner {
           break;
         }
 
+        case 'break_loop': {
+          options?.onStepStatusChange?.({
+            stepId: step.id,
+            stepType: step.type,
+            status: 'success',
+          });
+          return { type: 'break_loop' };
+        }
+
 
         case 'extract_text': {
           const extractType =
@@ -546,7 +571,10 @@ export class RpaRunner {
         status: 'success',
       });
 
-      return nextStepId;
+      return {
+        type: 'next',
+        nextStepId,
+      };
     } catch (error) {
       options?.onStepStatusChange?.({
         stepId: step.id,
@@ -608,6 +636,14 @@ export class RpaRunner {
         })[0] ?? loopChildren[0];
 
     for (let index = 0; index < iterations; index += 1) {
+      options?.onStepStatusChange?.({
+        stepId: step.id,
+        stepType: step.type,
+        status: 'running',
+        loopIteration: index + 1,
+        loopTotal: iterations,
+      });
+
       let currentStepId: string | null = entryStep.id;
       const visited = new Set<string>();
 
@@ -622,8 +658,13 @@ export class RpaRunner {
           throw new Error(`Unknown workflow step: ${currentStepId}`);
         }
 
-        const nextStepId = await this.runStep(childStep, stepMap, screenshots, variables, options);
-        currentStepId = nextStepId && loopChildIds.has(nextStepId) ? nextStepId : null;
+        const result = await this.runStep(childStep, stepMap, screenshots, variables, options);
+        if (result.type === 'break_loop') {
+          return step.next;
+        }
+
+        currentStepId =
+          result.nextStepId && loopChildIds.has(result.nextStepId) ? result.nextStepId : null;
       }
     }
 
@@ -693,6 +734,21 @@ export class RpaRunner {
     }
 
     return current;
+  }
+
+  private initializeWorkflowVariables(workflow: RpaWorkflowSchema): Record<string, unknown> {
+    const variables: Record<string, unknown> = {};
+
+    for (const variable of workflow.variables ?? []) {
+      const name = typeof variable?.name === 'string' ? variable.name.trim() : '';
+      if (!name) {
+        continue;
+      }
+
+      variables[name] = variable.value;
+    }
+
+    return variables;
   }
 
   private parseVariablePath(expression: string): Array<string | number> {

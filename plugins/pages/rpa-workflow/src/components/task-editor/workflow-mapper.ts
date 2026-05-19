@@ -238,6 +238,11 @@ function buildWorkflowStep(step: FlowStep, nextStepId: string | null): RpaWorkfl
         },
       };
     }
+    case 'break_loop':
+      return {
+        ...baseStep,
+        next: null,
+      };
     case 'screenshot': {
       const screenshotMode =
         step.config.captureMode === 'element'
