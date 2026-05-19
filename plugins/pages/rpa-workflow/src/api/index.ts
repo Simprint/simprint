@@ -59,6 +59,13 @@ export interface RpaTaskDetailDto {
   environment_uuids: string[];
 }
 
+export interface RpaTaskInputVariable {
+  name: string;
+  value: string;
+  promptOnRun: boolean;
+  required: boolean;
+}
+
 export interface PaginatedRpaTaskList {
   items: RpaTask[];
   total: number;
@@ -121,6 +128,18 @@ function toStringArray(value: unknown): string[] {
     return [];
   }
   return value.map(String).filter(Boolean);
+}
+
+interface StoredWorkflowMetaVariable {
+  name?: string;
+  value?: string;
+  prompt_on_run?: boolean;
+  required?: boolean;
+}
+
+interface StoredWorkflowMeta {
+  start_step_id?: string | null;
+  global_variables?: StoredWorkflowMetaVariable[];
 }
 
 function normalizeStatus(status: string): RpaTask['status'] {
@@ -303,11 +322,41 @@ export async function listRpaEnvironmentsPage(request?: {
   };
 }
 
+function extractStoredWorkflowMeta(detail: RpaTaskDetailDto): StoredWorkflowMeta | null {
+  const orderedSteps = [...detail.steps].sort(
+    (a, b) => (a.sort_order ?? Number.MAX_SAFE_INTEGER) - (b.sort_order ?? Number.MAX_SAFE_INTEGER)
+  );
+
+  const workflowMeta = orderedSteps.find((step) => step.config?.workflow_meta)?.config?.workflow_meta;
+  if (!workflowMeta || typeof workflowMeta !== 'object') {
+    return null;
+  }
+
+  return workflowMeta as StoredWorkflowMeta;
+}
+
+export function extractTaskInputVariables(detail: RpaTaskDetailDto): RpaTaskInputVariable[] {
+  const workflowMeta = extractStoredWorkflowMeta(detail);
+  if (!Array.isArray(workflowMeta?.global_variables)) {
+    return [];
+  }
+
+  return workflowMeta.global_variables
+    .map((variable) => ({
+      name: typeof variable?.name === 'string' ? variable.name.trim() : '',
+      value: typeof variable?.value === 'string' ? variable.value : '',
+      promptOnRun: variable?.prompt_on_run === true,
+      required: variable?.required === true,
+    }))
+    .filter((variable) => variable.name && variable.promptOnRun);
+}
+
 export function extractWorkflowSchema(detail: RpaTaskDetailDto): RpaWorkflowSchema | null {
   const tags = toStringArray(detail.task.tags);
   const orderedSteps = [...detail.steps].sort(
     (a, b) => (a.sort_order ?? Number.MAX_SAFE_INTEGER) - (b.sort_order ?? Number.MAX_SAFE_INTEGER)
   );
+  const workflowMeta = extractStoredWorkflowMeta(detail);
 
   const workflowSteps = orderedSteps
     .map((step, index) => {
@@ -357,7 +406,18 @@ export function extractWorkflowSchema(detail: RpaTaskDetailDto): RpaWorkflowSche
       notify_on_complete: detail.task.notify_on_complete ?? false,
       notify_on_error: detail.task.notify_on_error ?? true,
     },
-    start_step_id: workflowSteps[0]?.id ?? null,
+    variables: Array.isArray(workflowMeta?.global_variables)
+      ? workflowMeta.global_variables
+          .map((variable) => ({
+            name: typeof variable?.name === 'string' ? variable.name.trim() : '',
+            value: typeof variable?.value === 'string' ? variable.value : '',
+          }))
+          .filter((variable) => variable.name)
+      : [],
+    start_step_id:
+      typeof workflowMeta?.start_step_id === 'string'
+        ? workflowMeta.start_step_id
+        : workflowSteps[0]?.id ?? null,
     steps: workflowSteps as RpaWorkflowSchema['steps'],
   };
 }

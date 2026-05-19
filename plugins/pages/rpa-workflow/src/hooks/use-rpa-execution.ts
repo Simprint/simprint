@@ -67,7 +67,7 @@ interface UseRpaExecutionResult {
     pending: PendingExecution | null;
     openDialog: (id: string) => Promise<void>;
     closeDialog: () => void;
-    confirmRun: () => Promise<void>;
+    confirmRun: (variableOverrides?: Record<string, string>) => Promise<void>;
   };
   executionDrawer: {
     open: boolean;
@@ -220,7 +220,7 @@ export function useRpaExecution(params: UseRpaExecutionParams): UseRpaExecutionR
     [execution?.taskId]
   );
 
-  const confirmRun = useCallback(async () => {
+  const confirmRun = useCallback(async (variableOverrides: Record<string, string> = {}) => {
     if (!pendingExecution) {
       return;
     }
@@ -236,6 +236,17 @@ export function useRpaExecution(params: UseRpaExecutionParams): UseRpaExecutionR
       return;
     }
 
+    const workflowWithOverrides = {
+      ...workflow,
+      variables: workflow.variables.map((variable) => ({
+        ...variable,
+        value:
+          Object.prototype.hasOwnProperty.call(variableOverrides, variable.name)
+            ? variableOverrides[variable.name] ?? ''
+            : variable.value,
+      })),
+    };
+
     stopRequestedRef.current = false;
     const startedAt = new Date().toISOString();
     setExecution({
@@ -243,10 +254,10 @@ export function useRpaExecution(params: UseRpaExecutionParams): UseRpaExecutionR
       taskName: pendingExecution.task.name,
       status: 'running',
       startedAt,
-      totalSteps: workflow.steps.length,
+      totalSteps: workflowWithOverrides.steps.length,
       workflow: {
-        startStepId: workflow.start_step_id,
-        steps: workflow.steps,
+        startStepId: workflowWithOverrides.start_step_id,
+        steps: workflowWithOverrides.steps,
       },
       currentStepName: undefined,
       currentEnvUuid: undefined,
@@ -296,10 +307,12 @@ export function useRpaExecution(params: UseRpaExecutionParams): UseRpaExecutionR
 
           const endpoint = await waitForCdpEndpoint(envUuid);
           const runner = new RpaRunner(new CdpBrowserAdapter());
-          const stepNameMap = new Map(workflow.steps.map((step) => [step.id, step.name]));
+          const stepNameMap = new Map(
+            workflowWithOverrides.steps.map((step) => [step.id, step.name])
+          );
 
           await runner.run(
-            workflow,
+            workflowWithOverrides,
             { envUuid, browserWsUrl: endpoint.browser_ws_url! },
             {
               onStepStatusChange: (event) => {
@@ -351,7 +364,7 @@ export function useRpaExecution(params: UseRpaExecutionParams): UseRpaExecutionR
             finishedAt: new Date().toISOString(),
           }));
 
-          if (!failedBecauseStopped && workflow.settings.stop_on_error) {
+          if (!failedBecauseStopped && workflowWithOverrides.settings.stop_on_error) {
             break;
           }
         } finally {

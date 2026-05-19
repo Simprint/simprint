@@ -1,8 +1,10 @@
-﻿import { Copy, Plus, Trash2 } from 'lucide-react';
+﻿import { useTranslation } from 'react-i18next';
+import { Copy, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
 import type { TaskVariable } from './task-settings-form';
 
 export interface RuntimeVariableItem {
@@ -23,6 +25,8 @@ function createGlobalVariable(): TaskVariable {
     id: 'var-' + Math.random().toString(36).slice(2, 8),
     name: '',
     value: '',
+    promptOnRun: false,
+    required: false,
   };
 }
 
@@ -32,6 +36,7 @@ export function VariablePanel({
   onGlobalVariablesChange,
   embedded = false,
 }: VariablePanelProps) {
+  const { t } = useTranslation('rpa');
   const runtimeVariableMap = Array.from(
     runtimeVariables.reduce(
       (map, variable) => map.set(variable.name, variable),
@@ -43,11 +48,21 @@ export function VariablePanel({
     onGlobalVariablesChange([...globalVariables, createGlobalVariable()]);
   };
 
-  const handleUpdateGlobalVariable = (id: string, key: 'name' | 'value', value: string) => {
+  const handleUpdateGlobalVariable = (
+    id: string,
+    key: keyof Pick<TaskVariable, 'name' | 'value' | 'promptOnRun' | 'required'>,
+    value: string | boolean
+  ) => {
     onGlobalVariablesChange(
       globalVariables.map((variable) =>
         variable.id === id ? { ...variable, [key]: value } : variable
       )
+    );
+  };
+
+  const handlePatchGlobalVariable = (id: string, patch: Partial<TaskVariable>) => {
+    onGlobalVariablesChange(
+      globalVariables.map((variable) => (variable.id === id ? { ...variable, ...patch } : variable))
     );
   };
 
@@ -73,7 +88,9 @@ export function VariablePanel({
     >
       {!embedded ? (
         <div className="px-3 py-2 border-b border-border flex items-center justify-between shrink-0">
-          <h3 className="text-xs font-semibold text-foreground">变量</h3>
+          <h3 className="text-xs font-semibold text-foreground">
+            {t('editor.variablePanel.title', { defaultValue: '变量' })}
+          </h3>
           <Button
             type="button"
             variant="outline"
@@ -82,7 +99,7 @@ export function VariablePanel({
             onClick={handleAddGlobalVariable}
           >
             <Plus className="h-3 w-3" />
-            新增变量
+            {t('editor.variablePanel.addVariable', { defaultValue: '新增变量' })}
           </Button>
         </div>
       ) : null}
@@ -91,7 +108,9 @@ export function VariablePanel({
         <div className="p-3 space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs">全局变量</Label>
+              <Label className="text-xs">
+                {t('editor.variablePanel.globalTitle', { defaultValue: '全局变量' })}
+              </Label>
               {embedded ? (
                 <Button
                   type="button"
@@ -101,14 +120,16 @@ export function VariablePanel({
                   onClick={handleAddGlobalVariable}
                 >
                   <Plus className="h-3 w-3" />
-                  新增变量
+                  {t('editor.variablePanel.addVariable', { defaultValue: '新增变量' })}
                 </Button>
               ) : null}
             </div>
             <div className="space-y-2 rounded-md border border-border bg-muted/10 p-3">
               {globalVariables.length === 0 ? (
                 <div className="rounded-md border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
-                  暂无全局变量。你可以在这里新增常量，并在流程中通过{' '}
+                  {t('editor.variablePanel.emptyGlobal', {
+                    defaultValue: '暂无全局变量。你可以在这里新增常量，并在流程中通过',
+                  })}{' '}
                   <span className="font-mono">{'{{变量名}}'}</span> 使用。
                 </div>
               ) : (
@@ -118,7 +139,9 @@ export function VariablePanel({
                       <Input
                         value={variable.name}
                         onChange={(e) => handleUpdateGlobalVariable(variable.id, 'name', e.target.value)}
-                        placeholder="变量名"
+                        placeholder={t('editor.variablePanel.namePlaceholder', {
+                          defaultValue: '变量名',
+                        })}
                         className="h-8 text-xs"
                       />
                       <Button
@@ -134,9 +157,45 @@ export function VariablePanel({
                     <Input
                       value={variable.value}
                       onChange={(e) => handleUpdateGlobalVariable(variable.id, 'value', e.target.value)}
-                      placeholder="变量值"
+                      placeholder={t('editor.variablePanel.valuePlaceholder', {
+                        defaultValue: '变量值',
+                      })}
                       className="h-8 text-xs"
                     />
+                    <div className="grid gap-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="text-[11px] font-medium text-foreground">
+                          {t('editor.variablePanel.promptOnRun', {
+                            defaultValue: '输入参数',
+                          })}
+                        </div>
+                        <Switch
+                          checked={variable.promptOnRun}
+                          onCheckedChange={(checked) =>
+                            handlePatchGlobalVariable(variable.id, {
+                              promptOnRun: checked,
+                              required: checked ? variable.required : false,
+                            })
+                          }
+                          className="mt-0.5 scale-75"
+                        />
+                      </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="text-[11px] font-medium text-foreground">
+                          {t('editor.variablePanel.required', {
+                            defaultValue: '必填',
+                          })}
+                        </div>
+                        <Switch
+                          checked={variable.promptOnRun && variable.required}
+                          disabled={!variable.promptOnRun}
+                          onCheckedChange={(checked) =>
+                            handlePatchGlobalVariable(variable.id, { required: checked })
+                          }
+                          className="mt-0.5 scale-75"
+                        />
+                      </div>
+                    </div>
                     {variable.name.trim() ? (
                       <div className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1.5">
                         <span className="truncate text-[10px] text-muted-foreground font-mono">
@@ -150,7 +209,9 @@ export function VariablePanel({
                           onClick={() => void handleCopyReference(variable.name.trim())}
                         >
                           <Copy className="h-3 w-3" />
-                          复制引用
+                          {t('editor.variablePanel.copyReference', {
+                            defaultValue: '复制引用',
+                          })}
                         </Button>
                       </div>
                     ) : null}
@@ -161,11 +222,16 @@ export function VariablePanel({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs">运行结果</Label>
+            <Label className="text-xs">
+              {t('editor.variablePanel.runtimeTitle', { defaultValue: '运行结果' })}
+            </Label>
             <div className="space-y-2 rounded-md border border-border bg-muted/10 p-3">
               {runtimeVariableMap.length === 0 ? (
                 <div className="rounded-md border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
-                  暂无运行结果。执行脚本、提取页面数据后，会在这里显示可引用的结果变量。
+                  {t('editor.variablePanel.emptyRuntime', {
+                    defaultValue:
+                      '暂无运行结果。执行脚本、提取页面数据后，会在这里显示可引用的结果变量。',
+                  })}
                 </div>
               ) : (
                 runtimeVariableMap.map((variable) => (
@@ -185,11 +251,14 @@ export function VariablePanel({
                         onClick={() => void handleCopyReference(variable.name)}
                       >
                         <Copy className="h-3 w-3" />
-                        复制引用
+                        {t('editor.variablePanel.copyReference', {
+                          defaultValue: '复制引用',
+                        })}
                       </Button>
                     </div>
                     <div className="rounded-md bg-muted/30 px-2 py-2 text-[10px] text-muted-foreground break-all">
-                      {variable.value || '空值'}
+                      {variable.value ||
+                        t('editor.variablePanel.emptyValue', { defaultValue: '空值' })}
                     </div>
                   </div>
                 ))

@@ -55,6 +55,7 @@ import {
 import { buildTaskPayload, buildWorkflowSchema, mapPortableTaskToEditorState, mapTaskDetailToEditorState } from './workflow-mapper';
 import type { PortableRpaTaskDocument } from '../../lib/rpa-transfer';
 import type { ProxyConfig } from '../../../../services/environment/src';
+import type { RpaWorkflowSchema } from '../../types';
 
 function createDefaultTaskConfig(): TaskConfig {
   const now = new Date();
@@ -991,6 +992,71 @@ export function TaskEditor() {
     );
   }, []);
 
+  const executeWorkflow = useCallback(
+    async (workflow: RpaWorkflowSchema) => {
+      setRunStepItems(
+        workflow.steps.map((step) => ({
+          id: step.id,
+          name: step.name,
+          type: step.type,
+          status: 'pending',
+          error: undefined,
+          loopIteration: undefined,
+          loopTotal:
+            step.type === 'loop' &&
+            typeof step.config?.iterations === 'number' &&
+            Number.isFinite(step.config.iterations)
+              ? Math.max(1, Math.trunc(step.config.iterations))
+              : undefined,
+          incomingFromStepId: undefined,
+          incomingBranchKey: undefined,
+        }))
+      );
+      setActiveRunEnvUuid(null);
+      setActiveRunEnvStatus('starting');
+      setRunStatus('starting');
+      setRunning(true);
+      stopRequestedRef.current = false;
+
+      try {
+        const endpoint = await startAnonymousRpaEnvironment(anonymousProxyConfig);
+        setActiveRunEnvUuid(endpoint.env_uuid);
+
+        const runner = new RpaRunner(new CdpBrowserAdapter());
+        await runner.run(
+          workflow,
+          {
+            envUuid: endpoint.env_uuid,
+            browserWsUrl: endpoint.browser_ws_url || '',
+          },
+          {
+            onStepStatusChange: handleStepStatusChange,
+            onTargetCaptured: handleTargetCaptured,
+            onDataExtracted: handleDataExtracted,
+            onScreenshotCaptured: handleScreenshotCaptured,
+          }
+        );
+
+        setRunStatus('success');
+      } catch {
+        if (stopRequestedRef.current) {
+          setRunStatus('stopped');
+        } else {
+          setRunStatus('failed');
+        }
+      } finally {
+        setRunning(false);
+      }
+    },
+    [
+      anonymousProxyConfig,
+      handleDataExtracted,
+      handleScreenshotCaptured,
+      handleStepStatusChange,
+      handleTargetCaptured,
+    ]
+  );
+
   const handleRun = async () => {
     if (runButtonBusy) {
       return;
@@ -1016,59 +1082,7 @@ export function TaskEditor() {
       return;
     }
 
-    setRunStepItems(
-      workflow.steps.map((step) => ({
-        id: step.id,
-        name: step.name,
-        type: step.type,
-        status: 'pending',
-        error: undefined,
-        loopIteration: undefined,
-        loopTotal:
-          step.type === 'loop' &&
-          typeof step.config?.iterations === 'number' &&
-          Number.isFinite(step.config.iterations)
-            ? Math.max(1, Math.trunc(step.config.iterations))
-            : undefined,
-        incomingFromStepId: undefined,
-        incomingBranchKey: undefined,
-      }))
-    );
-    setActiveRunEnvUuid(null);
-    setActiveRunEnvStatus('starting');
-    setRunStatus('starting');
-    setRunning(true);
-    stopRequestedRef.current = false;
-
-    try {
-      const endpoint = await startAnonymousRpaEnvironment(anonymousProxyConfig);
-      setActiveRunEnvUuid(endpoint.env_uuid);
-
-      const runner = new RpaRunner(new CdpBrowserAdapter());
-      await runner.run(
-        workflow,
-        {
-          envUuid: endpoint.env_uuid,
-          browserWsUrl: endpoint.browser_ws_url || '',
-        },
-        {
-          onStepStatusChange: handleStepStatusChange,
-          onTargetCaptured: handleTargetCaptured,
-          onDataExtracted: handleDataExtracted,
-          onScreenshotCaptured: handleScreenshotCaptured,
-        }
-      );
-
-      setRunStatus('success');
-    } catch {
-      if (stopRequestedRef.current) {
-        setRunStatus('stopped');
-      } else {
-        setRunStatus('failed');
-      }
-    } finally {
-      setRunning(false);
-    }
+    await executeWorkflow(workflow);
   };
 
   const handleStopRunningEnvironment = async () => {
@@ -1276,7 +1290,9 @@ export function TaskEditor() {
                   : 'shrink-0'
               }
             >
-              <AccordionTrigger className="px-3 py-2 text-xs font-semibold hover:no-underline">{t('editor.variablePanel', { defaultValue: '变量配置' })}</AccordionTrigger>
+              <AccordionTrigger className="px-3 py-2 text-xs font-semibold hover:no-underline">
+                {t('editor.variablePanel.title', { defaultValue: '变量' })}
+              </AccordionTrigger>
               <AccordionContent
                 className={
                   sidebarSection === 'variables'

@@ -38,7 +38,12 @@ interface StoredWorkflowStep {
 
 interface StoredWorkflowMeta {
   start_step_id?: string | null;
-  global_variables?: Array<{ name?: string; value?: string }>;
+  global_variables?: Array<{
+    name?: string;
+    value?: string;
+    prompt_on_run?: boolean;
+    required?: boolean;
+  }>;
   start_position?: {
     x?: number;
     y?: number;
@@ -306,6 +311,24 @@ function toStringArray(value: unknown): string[] {
   return value.map(String).filter(Boolean);
 }
 
+function mapStoredGlobalVariables(
+  variables: StoredWorkflowMeta['global_variables'] | undefined
+): TaskVariable[] {
+  if (!Array.isArray(variables)) {
+    return [];
+  }
+
+  return variables
+    .map((variable, index) => ({
+      id: `var-${index}`,
+      name: typeof variable?.name === 'string' ? variable.name : '',
+      value: typeof variable?.value === 'string' ? variable.value : '',
+      promptOnRun: variable?.prompt_on_run === true,
+      required: variable?.required === true,
+    }))
+    .filter((variable) => variable.name.trim());
+}
+
 function buildFlowStepFromStoredStep(step: StoredWorkflowStep): FlowStep {
   const uiType = typeof step.ui?.source_type === 'string' ? step.ui.source_type : step.type;
   const position = step.ui?.position;
@@ -419,7 +442,14 @@ export function buildTaskPayload(
         workflow_step: step,
         workflow_meta: {
           start_step_id: workflow.start_step_id,
-          global_variables: workflow.variables,
+          global_variables: config.globalVariables
+            .map((variable) => ({
+              name: variable.name.trim(),
+              value: variable.value,
+              prompt_on_run: variable.promptOnRun === true,
+              required: variable.promptOnRun === true && variable.required === true,
+            }))
+            .filter((variable) => variable.name),
           start_position: specialPositions.start,
           end_position: specialPositions.end,
         },
@@ -446,15 +476,7 @@ export function mapTaskDetailToEditorState(detail: RpaTaskDetailDto): EditorStat
     ?.workflow_meta as StoredWorkflowMeta | undefined;
   const storedStartStepId =
     typeof storedWorkflowMeta?.start_step_id === 'string' ? storedWorkflowMeta.start_step_id : null;
-  const storedGlobalVariables: TaskVariable[] = Array.isArray(storedWorkflowMeta?.global_variables)
-    ? storedWorkflowMeta.global_variables
-        .map((variable, index) => ({
-          id: `var-${index}`,
-          name: typeof variable?.name === 'string' ? variable.name : '',
-          value: typeof variable?.value === 'string' ? variable.value : '',
-        }))
-        .filter((variable) => variable.name.trim())
-    : [];
+  const storedGlobalVariables = mapStoredGlobalVariables(storedWorkflowMeta?.global_variables);
   const specialPositions: SpecialNodePositions = {
     start: readCanvasPosition(
       storedWorkflowMeta?.start_position,
@@ -517,10 +539,18 @@ export function mapPortableTaskToEditorState(document: PortableRpaTaskDocument):
     (a, b) => (a.sort_order ?? Number.MAX_SAFE_INTEGER) - (b.sort_order ?? Number.MAX_SAFE_INTEGER)
   );
 
+  const storedWorkflowMeta = sortedSteps.find((step) => {
+    const config = step.config;
+    return config && typeof config === 'object' && 'workflow_meta' in config;
+  })?.config?.workflow_meta as StoredWorkflowMeta | undefined;
   const importedIdMap = new Map<string, string>();
   sortedSteps.forEach((step) => {
     importedIdMap.set(step.uuid, crypto.randomUUID());
   });
+  const storedStartStepId =
+    typeof storedWorkflowMeta?.start_step_id === 'string'
+      ? importedIdMap.get(storedWorkflowMeta.start_step_id) ?? null
+      : null;
 
   const steps = sortedSteps.map((step, index) => {
     const legacyStep = buildLegacyFlowStep(
@@ -551,7 +581,7 @@ export function mapPortableTaskToEditorState(document: PortableRpaTaskDocument):
       ...legacyStep,
       id: importedIdMap.get(step.uuid) ?? legacyStep.id,
       nextStepId: step.next_step_uuid ? importedIdMap.get(step.next_step_uuid) ?? null : null,
-      isStart: index === 0,
+      isStart: storedStartStepId ? importedIdMap.get(step.uuid) === storedStartStepId : index === 0,
       config:
         Object.keys(mappedBranches).length > 0
           ? {
@@ -574,7 +604,7 @@ export function mapPortableTaskToEditorState(document: PortableRpaTaskDocument):
     cronExpression: document.task.cron_expression ?? undefined,
     selectedEnvironments: document.task.environment_uuids || [],
     runMode: document.task.run_mode === 'parallel' ? 'parallel' : 'sequential',
-    globalVariables: [],
+    globalVariables: mapStoredGlobalVariables(storedWorkflowMeta?.global_variables),
     retryCount: document.task.retry_count ?? 3,
     retryInterval: document.task.retry_interval ?? 5,
     timeout: document.task.timeout ?? 300,
@@ -587,7 +617,16 @@ export function mapPortableTaskToEditorState(document: PortableRpaTaskDocument):
   return {
     config,
     steps,
-    specialPositions: DEFAULT_SPECIAL_NODE_POSITIONS,
+    specialPositions: {
+      start: readCanvasPosition(
+        storedWorkflowMeta?.start_position,
+        DEFAULT_SPECIAL_NODE_POSITIONS.start
+      ),
+      end: readCanvasPosition(
+        storedWorkflowMeta?.end_position,
+        DEFAULT_SPECIAL_NODE_POSITIONS.end
+      ),
+    },
     workflow: buildWorkflowSchema(config, steps),
   };
 }

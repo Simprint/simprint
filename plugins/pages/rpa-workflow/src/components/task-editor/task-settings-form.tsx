@@ -26,6 +26,8 @@ export interface TaskVariable {
   id: string;
   name: string;
   value: string;
+  promptOnRun: boolean;
+  required: boolean;
 }
 
 export interface TaskConfig {
