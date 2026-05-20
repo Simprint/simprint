@@ -189,7 +189,12 @@ export function DeviceSettingsForm({ value, onChange }: DeviceSettingsFormProps)
           <Label className="text-xs shrink-0">{t('deviceSettings.deviceMemory')}</Label>
           <NumberSelector
             value={value.deviceMemory}
-            options={[4, 8, 16, 32]}
+            options={[
+              4,
+              8,
+              // 16,
+              // 32,
+            ]}
             onChange={(v) => onChange({ ...value, deviceMemory: v })}
             unit="G"
           />

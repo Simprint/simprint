@@ -9,11 +9,24 @@ interface WindowSummaryProps {
 }
 
 // 概要项组件
-function SummaryItem({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function SummaryItem({
+  label,
+  value,
+  mono,
+  wrap,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  wrap?: boolean;
+}) {
   return (
-    <div className="flex justify-between items-center gap-2">
+    <div className={`flex justify-between gap-2 ${wrap ? 'items-start' : 'items-center'}`}>
       <span className="text-muted-foreground shrink-0">{label}</span>
-      <span className={`truncate text-right ${mono ? 'font-mono' : ''}`} title={value}>
+      <span
+        className={`flex-1 min-w-0 ${wrap ? 'text-right break-all whitespace-normal' : 'truncate text-right'} ${mono ? 'font-mono' : ''}`}
+        title={value}
+      >
         {value}
       </span>
     </div>
@@ -61,6 +74,7 @@ export function WindowSummary({ config, onRandomize }: WindowSummaryProps) {
             label={t('windowInfo.userAgent')}
             value={config.windowInfo.userAgent || '-'}
             mono
+            wrap
           />
           <SummaryItem
             label={t('windowInfo.platformAccount')}
@@ -150,9 +164,7 @@ export function WindowSummary({ config, onRandomize }: WindowSummaryProps) {
         <SummaryGroup title={t('sections.screenHardware')}>
           <SummaryItem
             label={t('summary.resolution')}
-            value={t(
-              `advancedFingerprint.fingerprintMode.${config.advancedFingerprintSettings.resolution}`
-            )}
+            value={`${config.advancedFingerprintSettings.resolution.width} × ${config.advancedFingerprintSettings.resolution.height}`}
           />
           <SummaryItem
             label={t('advancedFingerprint.colorDepth')}

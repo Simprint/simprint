@@ -231,7 +231,12 @@ export function ScreenHardwareForm({
             <Label className="text-xs shrink-0">{t('deviceSettings.deviceMemory')}</Label>
             <NumberSelector
               value={deviceSettings.deviceMemory}
-              options={[4, 8, 16, 32]}
+              options={[
+                4,
+                8,
+                // 16,
+                // 32,
+              ]}
               onChange={(v) => onDeviceSettingsChange({ ...deviceSettings, deviceMemory: v })}
               unit="G"
             />
