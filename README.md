@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/simprint-simprint-badge.png)](https://mseep.ai/app/simprint-simprint)
+
 <div align="center">
   <img src="./public/assets/logo.png" alt="Simprint Logo" width="120" />
   <h1>Simprint</h1>
