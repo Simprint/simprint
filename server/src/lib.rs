@@ -3,6 +3,7 @@ use crate::utils::IConfig;
 pub mod app;
 pub mod caches;
 pub mod cli;
+pub mod database;
 pub mod dto;
 pub mod entitys;
 pub mod errors;

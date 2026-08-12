@@ -1,7 +1,6 @@
-use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
-
 use crate::{
     caches::CacheStore,
+    database::{self, DbPool},
     utils::{DatabaseConfig, IConfig},
 };
 
@@ -9,7 +8,7 @@ use crate::{
 #[derive(Clone)]
 pub struct SvcCtx {
     pub config: IConfig,
-    pub db: Pool<Postgres>,
+    pub db: DbPool,
     pub cache: CacheStore,
 }
 
@@ -29,16 +28,7 @@ impl SvcCtx {
         })
     }
 
-    pub async fn create_db(config: &DatabaseConfig) -> Result<Pool<Postgres>, anyhow::Error> {
-        let pool = PgPoolOptions::new()
-            .max_lifetime(std::time::Duration::from_secs(config.max_lifetime))
-            .idle_timeout(std::time::Duration::from_secs(config.idle_timeout))
-            .acquire_timeout(std::time::Duration::from_secs(config.acquire_timeout))
-            .max_connections(config.max_connections)
-            .min_connections(config.min_connections)
-            .connect(&config.url)
-            .await?;
-
-        Ok(pool)
+    pub async fn create_db(config: &DatabaseConfig) -> Result<DbPool, anyhow::Error> {
+        database::connect(config).await
     }
 }
