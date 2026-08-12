@@ -1,5 +1,7 @@
-use sqlx::{Error, Pool, Postgres};
+use sqlx::Error;
 use uuid::Uuid;
+
+use crate::database::{Db as Postgres, Pool};
 
 use crate::dto::{LoginHistoryDto, TeamDto, TeamInvitationDto, TeamMemberDto};
 use crate::entitys::CreateTeamRequest;
@@ -162,7 +164,7 @@ pub async fn update_team(
     avatar_hash: Option<&str>,
 ) -> Result<(), Error> {
     let mut query = String::from("UPDATE teams SET updated_at = NOW()");
-    let mut params: Vec<Box<dyn sqlx::Encode<'_, sqlx::Postgres> + Send + Sync>> = vec![];
+    let mut params: Vec<Box<dyn sqlx::Encode<'_, Postgres> + Send + Sync>> = vec![];
 
     if let Some(n) = name {
         query.push_str(", name = $");

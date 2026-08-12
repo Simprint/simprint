@@ -1,5 +1,7 @@
 use crate::dto::strategy_types::StrategyType;
-use sqlx::{Error, Pool, Postgres};
+use sqlx::Error;
+
+use crate::database::{Db as Postgres, Pool};
 
 /// 根据ID查询策略类型
 pub async fn query_strategy_type_by_id(

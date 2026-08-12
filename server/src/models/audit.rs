@@ -1,5 +1,7 @@
-use sqlx::{Error, Pool, Postgres};
+use sqlx::Error;
 use uuid::Uuid;
+
+use crate::database::{Db as Postgres, Pool};
 
 use crate::dto::AuditLogDto;
 

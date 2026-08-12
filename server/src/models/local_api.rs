@@ -1,8 +1,10 @@
 use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-use sqlx::{Error, Pool, Postgres};
+use sqlx::Error;
 use uuid::Uuid;
+
+use crate::database::{Db as Postgres, Pool};
 
 use crate::dto::{
     LocalApiKeyDto, LocalApiKeyPermissionDto, LocalApiPermissionDefinitionDto, LocalApiSettingsDto,

@@ -1,5 +1,5 @@
 use chrono::Utc;
-use sqlx::{Pool, Postgres};
+use crate::database::{Db as Postgres, Pool};
 
 use crate::{dto::maintenance::Maintenance, entitys::maintenance::CreateMaintenanceRequest};
 

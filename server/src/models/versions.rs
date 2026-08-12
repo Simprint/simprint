@@ -1,7 +1,9 @@
 use crate::dto::versions::Version;
 use crate::entitys::versions::{CreateVersionRequest, UpdateVersionRequest};
 use chrono::{DateTime, Utc};
-use sqlx::{Error, Pool, Postgres};
+use sqlx::Error;
+
+use crate::database::{Db as Postgres, Pool};
 
 /// 插入新版本
 pub async fn insert_version(

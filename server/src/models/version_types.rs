@@ -1,6 +1,8 @@
 use crate::dto::version_types::VersionType;
 use crate::entitys::version_types::{CreateVersionTypeRequest, UpdateVersionTypeRequest};
-use sqlx::{Error, Pool, Postgres};
+use sqlx::Error;
+
+use crate::database::{Db as Postgres, Pool};
 
 /// 插入新版本类型
 pub async fn insert_version_type(

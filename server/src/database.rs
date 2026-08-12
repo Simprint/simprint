@@ -1,4 +1,4 @@
-use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
+use sqlx::{Postgres, postgres::PgPoolOptions};
 
 use crate::utils::DatabaseConfig;
 
@@ -8,6 +8,7 @@ use crate::utils::DatabaseConfig;
 /// boundary while the PostgreSQL-specific queries are converted domain by
 /// domain.
 pub type Db = Postgres;
+pub type Pool<T = Db> = sqlx::Pool<T>;
 pub type DbPool = Pool<Db>;
 
 pub async fn connect(config: &DatabaseConfig) -> anyhow::Result<DbPool> {

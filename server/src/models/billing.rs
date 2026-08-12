@@ -1,7 +1,9 @@
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
-use sqlx::{Error, Pool, Postgres, Row};
+use sqlx::{Error, Row};
 use uuid::Uuid;
+
+use crate::database::{Db as Postgres, Pool};
 
 use crate::dto::{
     AutoRenewalServiceDto, CouponDto, InvoiceDto, PaymentOrderDto, PlanDto, PlanFeatureDto,
