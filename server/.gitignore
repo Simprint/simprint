@@ -35,5 +35,5 @@ simprint-server-docker-*.tar.gz
 
 # 配置文件：仅保留示例配置可提交
 configs/*
-!configs/config.example.toml
+!configs/*.example.toml
 

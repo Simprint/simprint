@@ -1,6 +1,6 @@
 use chrono::Utc;
-use redis::{AsyncCommands, cmd};
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use uuid::Uuid;
 
 use crate::dto::LocalApiPermissionDefinitionDto;
@@ -74,11 +74,7 @@ pub async fn get_local_api_key_cache(
     key_hash: &str,
 ) -> Result<Option<LocalApiKeyCache>, anyhow::Error> {
     let key = local_api_key_cache_key(key_hash);
-    let value: Option<String> = svc_ctx.redis.clone().get(key).await?;
-    let value = value
-        .map(|payload| serde_json::from_str::<LocalApiKeyCache>(&payload))
-        .transpose()?;
-    Ok(value)
+    svc_ctx.cache.get_json(&key).await
 }
 
 pub async fn set_local_api_key_cache(
@@ -87,13 +83,10 @@ pub async fn set_local_api_key_cache(
     cache: &LocalApiKeyCache,
 ) -> Result<(), anyhow::Error> {
     let key = local_api_key_cache_key(key_hash);
-    let value = serde_json::to_string(cache)?;
-    let _: () = svc_ctx
-        .redis
-        .clone()
-        .set_ex(key, value, LOCAL_API_KEY_CACHE_TTL)
-        .await?;
-    Ok(())
+    svc_ctx
+        .cache
+        .set_json(key, cache, Duration::from_secs(LOCAL_API_KEY_CACHE_TTL))
+        .await
 }
 
 pub async fn delete_local_api_key_cache(
@@ -101,8 +94,7 @@ pub async fn delete_local_api_key_cache(
     key_hash: &str,
 ) -> Result<(), anyhow::Error> {
     let key = local_api_key_cache_key(key_hash);
-    let _: usize = svc_ctx.redis.clone().del(key).await?;
-    Ok(())
+    svc_ctx.cache.delete(&key).await
 }
 
 pub async fn get_local_api_permission_cache(
@@ -111,11 +103,7 @@ pub async fn get_local_api_permission_cache(
     permission_code: &str,
 ) -> Result<Option<LocalApiPermissionCache>, anyhow::Error> {
     let key = local_api_permission_cache_key(api_key_id, permission_code);
-    let value: Option<String> = svc_ctx.redis.clone().get(key).await?;
-    let value = value
-        .map(|payload| serde_json::from_str::<LocalApiPermissionCache>(&payload))
-        .transpose()?;
-    Ok(value)
+    svc_ctx.cache.get_json(&key).await
 }
 
 pub async fn set_local_api_permission_cache(
@@ -125,13 +113,14 @@ pub async fn set_local_api_permission_cache(
     cache: &LocalApiPermissionCache,
 ) -> Result<(), anyhow::Error> {
     let key = local_api_permission_cache_key(api_key_id, permission_code);
-    let value = serde_json::to_string(cache)?;
-    let _: () = svc_ctx
-        .redis
-        .clone()
-        .set_ex(key, value, LOCAL_API_PERMISSION_CACHE_TTL)
-        .await?;
-    Ok(())
+    svc_ctx
+        .cache
+        .set_json(
+            key,
+            cache,
+            Duration::from_secs(LOCAL_API_PERMISSION_CACHE_TTL),
+        )
+        .await
 }
 
 pub async fn delete_local_api_permission_cache(
@@ -140,23 +129,15 @@ pub async fn delete_local_api_permission_cache(
     permission_code: &str,
 ) -> Result<(), anyhow::Error> {
     let key = local_api_permission_cache_key(api_key_id, permission_code);
-    let _: usize = svc_ctx.redis.clone().del(key).await?;
-    Ok(())
+    svc_ctx.cache.delete(&key).await
 }
 
 pub async fn delete_local_api_permission_caches_for_key(
     svc_ctx: &SvcCtx,
     api_key_id: i32,
 ) -> Result<(), anyhow::Error> {
-    let pattern = format!("{}:{}:*", LOCAL_API_PERMISSION_CACHE_PREFIX, api_key_id);
-    let keys: Vec<String> = cmd("KEYS")
-        .arg(&pattern)
-        .query_async(&mut svc_ctx.redis.clone())
-        .await?;
-    if !keys.is_empty() {
-        let _: usize = svc_ctx.redis.clone().del(keys).await?;
-    }
-    Ok(())
+    let prefix = format!("{}:{}:", LOCAL_API_PERMISSION_CACHE_PREFIX, api_key_id);
+    svc_ctx.cache.delete_prefix(&prefix).await
 }
 
 pub async fn get_local_api_permission_definition_cache(
@@ -164,11 +145,7 @@ pub async fn get_local_api_permission_definition_cache(
     permission_code: &str,
 ) -> Result<Option<LocalApiPermissionDefinitionDto>, anyhow::Error> {
     let key = local_api_permission_definition_cache_key(permission_code);
-    let value: Option<String> = svc_ctx.redis.clone().get(key).await?;
-    let value = value
-        .map(|payload| serde_json::from_str::<LocalApiPermissionDefinitionDto>(&payload))
-        .transpose()?;
-    Ok(value)
+    svc_ctx.cache.get_json(&key).await
 }
 
 pub async fn set_local_api_permission_definition_cache(
@@ -177,13 +154,14 @@ pub async fn set_local_api_permission_definition_cache(
     cache: &LocalApiPermissionDefinitionDto,
 ) -> Result<(), anyhow::Error> {
     let key = local_api_permission_definition_cache_key(permission_code);
-    let value = serde_json::to_string(cache)?;
-    let _: () = svc_ctx
-        .redis
-        .clone()
-        .set_ex(key, value, LOCAL_API_PERMISSION_CACHE_TTL)
-        .await?;
-    Ok(())
+    svc_ctx
+        .cache
+        .set_json(
+            key,
+            cache,
+            Duration::from_secs(LOCAL_API_PERMISSION_CACHE_TTL),
+        )
+        .await
 }
 
 pub async fn delete_local_api_permission_definition_cache(
@@ -191,8 +169,7 @@ pub async fn delete_local_api_permission_definition_cache(
     permission_code: &str,
 ) -> Result<(), anyhow::Error> {
     let key = local_api_permission_definition_cache_key(permission_code);
-    let _: usize = svc_ctx.redis.clone().del(key).await?;
-    Ok(())
+    svc_ctx.cache.delete(&key).await
 }
 
 pub async fn get_local_api_rate_count(
@@ -203,8 +180,7 @@ pub async fn get_local_api_rate_count(
     window_key: &str,
 ) -> Result<i64, anyhow::Error> {
     let key = local_api_rate_cache_key(api_key_id, permission_code, window_type, window_key);
-    let value: Option<i64> = svc_ctx.redis.clone().get(key).await?;
-    Ok(value.unwrap_or(0))
+    Ok(svc_ctx.cache.get_i64(&key).await?.unwrap_or(0))
 }
 
 pub async fn increment_local_api_rate_count(
@@ -215,16 +191,14 @@ pub async fn increment_local_api_rate_count(
     window_key: &str,
 ) -> Result<i64, anyhow::Error> {
     let key = local_api_rate_cache_key(api_key_id, permission_code, window_type, window_key);
-    let mut redis = svc_ctx.redis.clone();
-    let count: i64 = redis.incr(&key, 1).await?;
-    if count == 1 {
-        let ttl = match window_type {
-            "minute" => MINUTE_WINDOW_SECONDS,
-            "hour" => HOUR_WINDOW_SECONDS,
-            "day" => DAY_WINDOW_SECONDS,
-            _ => DAY_WINDOW_SECONDS,
-        };
-        let _: bool = redis.expire(&key, ttl).await?;
-    }
-    Ok(count)
+    let ttl = match window_type {
+        "minute" => MINUTE_WINDOW_SECONDS,
+        "hour" => HOUR_WINDOW_SECONDS,
+        "day" => DAY_WINDOW_SECONDS,
+        _ => DAY_WINDOW_SECONDS,
+    };
+    svc_ctx
+        .cache
+        .increment(&key, Duration::from_secs(ttl as u64))
+        .await
 }

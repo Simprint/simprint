@@ -25,15 +25,7 @@ pub async fn init_encrypt_secret(config: &IConfig) {
 
 /// 初始化对象存储
 pub async fn init_storage(config: &IConfig) {
-    let storage_config = &config.clone().storage;
-
-    utils::init_storage(
-        &storage_config.endpoint,
-        &storage_config.access_key,
-        &storage_config.secret_access_key,
-        None,
-        None,
-    )
-    .await
-    .expect("初始化对象存储客户端失败");
+    utils::init_storage(&config.storage)
+        .await
+        .expect("初始化对象存储客户端失败");
 }

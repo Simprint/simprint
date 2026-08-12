@@ -1,5 +1,5 @@
 use crate::svc_ctx::SvcCtx;
-use redis::AsyncCommands;
+use std::time::Duration;
 use uuid::Uuid;
 
 pub(crate) const REGISTER_CODE_CACHE_KEY: &str = "verification:code:register:send";
@@ -15,8 +15,10 @@ pub async fn set_register_code(
     code: &str,
 ) -> Result<(), anyhow::Error> {
     let key = format!("{}:{}", REGISTER_CODE_CACHE_KEY, email);
-    let _: () = svc_ctx.redis.clone().set_ex(key, code, CODE_EXPIRATION).await?;
-    Ok(())
+    svc_ctx
+        .cache
+        .set_string(key, code, Duration::from_secs(CODE_EXPIRATION))
+        .await
 }
 
 /// 获取用户注册的验证码
@@ -25,8 +27,7 @@ pub async fn get_register_code(
     email: &str,
 ) -> Result<Option<String>, anyhow::Error> {
     let key = format!("{}:{}", REGISTER_CODE_CACHE_KEY, email);
-    let result: Option<String> = svc_ctx.redis.clone().get(key).await?;
-    Ok(result)
+    svc_ctx.cache.get_string(&key).await
 }
 
 /// 设置重置密码的验证码
@@ -36,8 +37,10 @@ pub async fn set_reset_password_code(
     code: &str,
 ) -> Result<(), anyhow::Error> {
     let key = format!("{}:{}", RESET_PASSWORD_CODE_CACHE_KEY, email);
-    let _: () = svc_ctx.redis.clone().set_ex(key, code, CODE_EXPIRATION).await?;
-    Ok(())
+    svc_ctx
+        .cache
+        .set_string(key, code, Duration::from_secs(CODE_EXPIRATION))
+        .await
 }
 
 /// 获取重置密码的验证码
@@ -46,8 +49,7 @@ pub async fn get_reset_password_code(
     email: &str,
 ) -> Result<Option<String>, anyhow::Error> {
     let key = format!("{}:{}", RESET_PASSWORD_CODE_CACHE_KEY, email);
-    let result: Option<String> = svc_ctx.redis.clone().get(key).await?;
-    Ok(result)
+    svc_ctx.cache.get_string(&key).await
 }
 
 /// 设置用户公钥
@@ -57,8 +59,10 @@ pub async fn set_user_public_key(
     public_key: &str,
 ) -> Result<(), anyhow::Error> {
     let key = format!("{}:{}", USER_PUBLIC_KEY_CACHE_KEY, user_uuid);
-    let _: () = svc_ctx.redis.clone().set_ex(key, public_key, PUBLIC_KEY_EXPIRATION).await?;
-    Ok(())
+    svc_ctx
+        .cache
+        .set_string(key, public_key, Duration::from_secs(PUBLIC_KEY_EXPIRATION))
+        .await
 }
 
 /// 获取用户公钥
@@ -67,6 +71,5 @@ pub async fn get_user_public_key(
     user_uuid: &Uuid,
 ) -> Result<Option<String>, anyhow::Error> {
     let key = format!("{}:{}", USER_PUBLIC_KEY_CACHE_KEY, user_uuid);
-    let result: Option<String> = svc_ctx.redis.clone().get(key).await?;
-    Ok(result)
+    svc_ctx.cache.get_string(&key).await
 }

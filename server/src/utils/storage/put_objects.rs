@@ -3,10 +3,9 @@
 //! 提供各类资源上传到对象存储的功能
 
 use bytes::Bytes;
-use minio::s3::{segmented_bytes::SegmentedBytes, types::S3Api};
 use sha2::{Digest, Sha256};
 
-use super::get_storage_client;
+use super::get_storage;
 
 /// 上传通用对象到对象存储
 ///
@@ -19,10 +18,7 @@ pub async fn put_object(
     object_path: &str,
     data: Bytes,
 ) -> Result<(), anyhow::Error> {
-    let client = get_storage_client()?;
-    let data: SegmentedBytes = SegmentedBytes::from(data);
-    client.put_object(bucket_name, object_path, data).send().await?;
-    Ok(())
+    get_storage()?.put_object(bucket_name, object_path, data).await
 }
 
 /// 上传扩展 CRX 文件到对象存储
@@ -47,8 +43,6 @@ pub async fn put_extension_crx(
     crx_hash: &str,
     data: Bytes,
 ) -> Result<String, anyhow::Error> {
-    let client = get_storage_client()?;
-
     // 计算扩展 ID 的哈希作为目录名
     let extension_id_hash = calculate_short_hash(extension_id);
 
@@ -59,8 +53,7 @@ pub async fn put_extension_crx(
         crx_hash
     );
 
-    let data: SegmentedBytes = SegmentedBytes::from(data);
-    client.put_object(bucket_name, &object_path, data).send().await?;
+    get_storage()?.put_object(bucket_name, &object_path, data).await?;
 
     tracing::info!(
         "Extension CRX uploaded: bucket={}, path={}",
@@ -93,8 +86,6 @@ pub async fn put_extension_icon(
     extension: &str,
     data: Bytes,
 ) -> Result<String, anyhow::Error> {
-    let client = get_storage_client()?;
-
     let extension_id_hash = calculate_short_hash(extension_id);
     let object_path = format!(
         "{}/icons/{}.{}",
@@ -103,8 +94,7 @@ pub async fn put_extension_icon(
         extension
     );
 
-    let data: SegmentedBytes = SegmentedBytes::from(data);
-    client.put_object(bucket_name, &object_path, data).send().await?;
+    get_storage()?.put_object(bucket_name, &object_path, data).await?;
 
     tracing::info!(
         "Extension icon uploaded: bucket={}, path={}",
@@ -122,11 +112,8 @@ pub async fn put_avatar_object(
     object: &str,
     data: Bytes,
 ) -> Result<(), anyhow::Error> {
-    let client = get_storage_client()?;
-    let data: SegmentedBytes = SegmentedBytes::from(data);
     let object_path = join_root(avatar_root, object);
-    client.put_object(bucket_name, &object_path, data).send().await?;
-    Ok(())
+    get_storage()?.put_object(bucket_name, &object_path, data).await
 }
 
 fn join_root(root: &str, object_path: &str) -> String {
