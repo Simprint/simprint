@@ -47,13 +47,6 @@ pub fn set_auto_start_enabled(app: AppHandle, enabled: bool) -> Result<AutoStart
     AppService::set_auto_start_enabled(&app, enabled)
 }
 
-#[tauri::command]
-pub async fn splashscreen_ready() -> Result<()> {
-    crate::app::startup::StartupService::splashscreen_ready()
-        .await
-        .map_err(|_| "设置 splashscreen 就绪失败".into())
-}
-
 // ============================================================================
 // 运行时信息命令
 // ============================================================================

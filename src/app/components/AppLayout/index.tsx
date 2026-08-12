@@ -1,28 +1,32 @@
 // 确保扩展点在所有插件导入之前注册
 import '../../extension-points';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { BrowserRouter } from 'react-router';
 import { pluginRegistry } from '@slotkitjs/core';
-import { useAuthStore } from '../../../../plugins/services/store/src';
-import { SettingsDialog } from '../../../../plugins/pages/system-settings/src';
+import { useAuthStore, useSettingsDialogStore } from '../../../../plugins/services/store/src';
 import { SettingsBootstrap } from '../../../../plugins/services/store/src';
 import { ThemeProvider } from '@/components/theme-provider';
 import { I18nProvider } from '@/components/i18n-provider';
 import { commonResources } from '@/i18n/resources/common';
 import { Toaster } from '@/components/ui/sonner';
 import { AppRoutes } from '../AppRoutes';
-import { SplashscreenRenderer } from '../SplashscreenRenderer';
 import { SyncerRenderer } from '../SyncerRenderer';
 import { useDisableDevTools } from '@/hooks/use-disable-dev-tools';
 import { SessionLockOverlay } from '../session-lock-overlay';
 import { useSessionLock } from '../../hooks/use-session-lock';
 
+const SettingsDialog = React.lazy(() =>
+  import('../../../../plugins/pages/system-settings/src/components/settings-dialog').then(
+    (module) => ({ default: module.SettingsDialog })
+  )
+);
+
 interface AppLayoutProps {
   /**
-   * 布局模式：'main' 渲染主应用布局，'splashscreen' 渲染启动屏幕，'syncer' 渲染同步器窗口
+   * 布局模式：'main' 渲染主应用布局，'syncer' 渲染同步器窗口
    */
-  mode?: 'main' | 'splashscreen' | 'syncer';
+  mode?: 'main' | 'syncer';
   pluginsReady?: boolean;
 }
 
@@ -31,6 +35,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ mode = 'main', pluginsRead
     null
   );
   const { initAuth, isAuthenticated } = useAuthStore();
+  const isSettingsDialogOpen = useSettingsDialogStore((state) => state.isOpen);
   const [authReady, setAuthReady] = useState(mode !== 'main');
   const [routesReady, setRoutesReady] = useState(false);
   useDisableDevTools();
@@ -83,11 +88,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ mode = 'main', pluginsRead
     };
   }, []);
 
-  // 如果是 splashscreen 模式，渲染启动屏幕
-  if (mode === 'splashscreen') {
-    return <SplashscreenRenderer />;
-  }
-
   // 如果是 syncer 模式，渲染同步器窗口
   if (mode === 'syncer') {
     return (
@@ -107,7 +107,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ mode = 'main', pluginsRead
               ? React.createElement(windowManagerComponent)
               : null}
             <AppRoutes onReady={handleRoutesReady} />
-            <SettingsDialog />
+            {isSettingsDialogOpen ? (
+              <Suspense fallback={null}>
+                <SettingsDialog />
+              </Suspense>
+            ) : null}
             <SessionLockOverlay
               open={mode === 'main' && isAuthenticated && sessionLock.isLocked}
               unlocking={sessionLock.unlocking}

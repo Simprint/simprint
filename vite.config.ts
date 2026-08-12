@@ -40,11 +40,10 @@ export default defineConfig({
     minify: !process.env.TAURI_ENV_DEBUG ? 'esbuild' : false,
     // produce sourcemaps for debug builds
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
-    // 多入口配置：主应用、启动画面、同步器
+    // 多入口配置：主应用、同步器
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
-        splashscreen: path.resolve(__dirname, 'splashscreen.html'),
         syncer: path.resolve(__dirname, 'syncer.html'),
       },
     },

@@ -531,10 +531,6 @@ pub enum Error {
     #[error("[220401] UI component initialization failed")]
     UiComponentInitFailed,
 
-    /// 220501: Splashscreen operation failed
-    #[error("[220501] Splashscreen operation failed")]
-    SplashscreenOperationFailed,
-
     // ==================== Path Management (23) ====================
     /// 230101: Path resolution failed
     #[error("[230101] Path resolution failed")]

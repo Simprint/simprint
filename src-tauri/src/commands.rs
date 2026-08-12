@@ -25,7 +25,6 @@ pub fn register_handles() -> impl Fn(Invoke<tauri::Wry>) -> bool + Send + Sync +
         app::set_auto_start_enabled,
         app::set_updating_state,
         app::get_app_state,
-        app::splashscreen_ready,
         app::close_program,
         app::get_executable_path,
         app::is_dev,

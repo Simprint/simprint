@@ -65,10 +65,7 @@ fn try_complete_startup(app: &AppHandle) -> Result<(), ()> {
         }
     }
 
-    // 先显示真正就绪的主窗口，再关闭启动页，避免桌面闪烁。
-    if let Some(splash_window) = app.get_webview_window("splashscreen") {
-        let _ = splash_window.close();
-    }
+    crate::app::startup_update::start_background(app.clone());
 
     Ok(())
 }
@@ -121,13 +118,6 @@ impl StartupService {
                 log::info!("Main window shown");
             }
         }
-        Ok(())
-    }
-
-    /// 通知后端 splashscreen 已准备好接收进度事件。
-    pub async fn splashscreen_ready() -> Result<(), ()> {
-        crate::app::splashscreen::set_frontend_ready();
-        log::info!("Splashscreen frontend reported ready");
         Ok(())
     }
 }

@@ -8,8 +8,8 @@ pub mod runtime;
 pub mod runtime_info;
 pub mod session_lock;
 pub mod setup;
-pub mod splashscreen;
 pub mod startup;
+pub mod startup_update;
 
 use crate::commands;
 use components::tray;
@@ -86,7 +86,8 @@ pub fn run() {
 
             setup::register_deep_link(app.handle().clone())?;
 
-            crate::commands::window::create_splashscreen_window(app.handle().clone())?;
+            crate::commands::window::create_main_window(app.handle().clone())?;
+            log::info!("Hidden main window created for single-window startup");
 
             tray::menu(app)?;
 
@@ -101,8 +102,9 @@ pub fn run() {
                 session_lock_manager.clone(),
             );
 
-            // 初始化应用启动流程（显示 splashscreen）
-            splashscreen::init_startup(app.handle().clone());
+            if startup::StartupService::backend_startup_ready(app.handle()).is_err() {
+                return Err(anyhow::anyhow!("Failed to complete the backend startup gate").into());
+            }
 
             Ok(())
         })

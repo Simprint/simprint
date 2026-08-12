@@ -118,5 +118,5 @@ all = "warn"
 
 [features]
 development = []
-production = []
+production = ["tauri/custom-protocol"]
 test = []

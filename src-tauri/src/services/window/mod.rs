@@ -261,6 +261,9 @@ impl WindowService {
             return Ok(());
         }
 
+        let build_started_at = std::time::Instant::now();
+        log::info!("Main window build started");
+
         #[cfg(feature = "production")]
         let devtools_enabled = false;
         #[cfg(not(feature = "production"))]
@@ -282,33 +285,12 @@ impl WindowService {
                 .devtools(devtools_enabled)
                 .build()?;
 
+        log::info!(
+            "Main window built in {:.1} ms",
+            build_started_at.elapsed().as_secs_f64() * 1_000.0
+        );
+
         log::trace!("主窗口已创建");
-        Ok(())
-    }
-
-    /// 创建启动加载窗口
-    pub fn create_splashscreen_window(app_handle: &AppHandle) -> Result<()> {
-        if app_handle.get_webview_window("splashscreen").is_some() {
-            log::debug!("启动窗口已存在，跳过创建");
-            return Ok(());
-        }
-
-        let _window = WebviewWindowBuilder::new(
-            app_handle,
-            "splashscreen",
-            WebviewUrl::App("splashscreen.html".into()),
-        )
-        .data_directory(Self::get_webview_data_dir()?)
-        .title("Simprint")
-        .decorations(false)
-        .inner_size(725.0, 475.0)
-        .resizable(false)
-        .center()
-        .visible(false)
-        .drag_and_drop(false)
-        .build()?;
-
-        log::trace!("启动窗口已创建");
         Ok(())
     }
 

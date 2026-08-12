@@ -93,11 +93,6 @@ pub fn tray_handler(tray: &TrayIcon, event: TrayIconEvent) {
                         let _ = window.set_focus();
                     }
                 } else {
-                    // 应用未准备好，可以选择显示splashscreen或忽略
-                    if let Some(splash_window) = app_handle.get_webview_window("splashscreen") {
-                        let _ = splash_window.show();
-                        let _ = splash_window.set_focus();
-                    }
                     println!("应用正在初始化中，请稍候...");
                 }
             });

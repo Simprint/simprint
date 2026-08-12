@@ -9,7 +9,6 @@ on:
       - "src-tauri/**"
       - "plugins/**"
       - "index.html"
-      - "splashscreen.html"
       - "vite.config.ts"
       - "build.cjs"
       - "package.json"
@@ -23,7 +22,6 @@ on:
       - "src-tauri/**"
       - "plugins/**"
       - "index.html"
-      - "splashscreen.html"
       - "vite.config.ts"
       - "build.cjs"
       - "package.json"
@@ -66,4 +64,3 @@ jobs:
       - name: Rust check
         working-directory: src-tauri
         run: cargo check
-

@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "slotkit generate-imports && slotkit dev",
-    "build:development": "vite build --mode development",
-    "build:production": "vite build --mode production",
-    "build:test": "vite build --mode test",
+    "build:development": "slotkit generate-imports && vite build --mode development",
+    "build:production": "slotkit generate-imports && vite build --mode production",
+    "build:test": "slotkit generate-imports && vite build --mode test",
     "deploy:prepare-version": "node deploy/prepare-version.mjs",
     "deploy:build": "node deploy/build.mjs",
     "deploy:latest-json": "node deploy/generate-latest-json.mjs",

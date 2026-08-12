@@ -28,10 +28,6 @@ pub fn register_plugins(app_handle: &AppHandle) {
 
                 let _ = main_window.show();
                 let _ = main_window.set_focus();
-            } else if let Some(splash_window) = app.get_webview_window("splashscreen") {
-                // 主窗口仍在并行加载时，不能由第二个实例提前显示。
-                let _ = splash_window.show();
-                let _ = splash_window.set_focus();
             }
         }))
         .unwrap();

@@ -47,11 +47,6 @@ pub async fn create_syncer_window(app_handle: AppHandle) -> Result<()> {
     WindowService::create_syncer_window(&app_handle).await
 }
 
-/// 创建启动窗口（内部使用，不暴露为 Tauri 命令）
-pub fn create_splashscreen_window(app_handle: AppHandle) -> Result<()> {
-    WindowService::create_splashscreen_window(&app_handle)
-}
-
 /// 创建主窗口（内部使用，不暴露为 Tauri 命令）
 pub fn create_main_window(app_handle: AppHandle) -> Result<()> {
     WindowService::create_main_window(&app_handle)
