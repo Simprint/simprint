@@ -1,0 +1,51 @@
+# Git
+.git
+.gitignore
+
+# Rust
+target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 文档
+README.md
+AGENTS.md
+docs/
+
+# 测试和开发文件
+*.test.toml
+*.dev.toml
+
+
+
+
+
+
+
+
+

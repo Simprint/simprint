@@ -1,0 +1,39 @@
+# Rust 编译输出
+/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+
+# 数据库文件（如果使用本地数据库）
+*.db
+*.sqlite
+*.sqlite3
+
+# 编译后的二进制文件
+console-gateway
+simprint-server
+update-gateway
+
+# Docker 镜像文件
+simprint-server-docker-*.tar.gz
+
+# 配置文件：仅保留示例配置可提交
+configs/*
+!configs/*.example.toml
+

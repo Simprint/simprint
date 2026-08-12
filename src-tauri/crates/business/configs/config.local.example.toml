@@ -1,0 +1,40 @@
+[app]
+name = "simprint-server-local"
+port = 40041
+secret = "change-this-to-a-long-random-secret"
+prefix = "/api/v1"
+encrypt_secret_location = "./assets/secret"
+route_whitelists = [
+    "POST+/api/v1/users/login",
+    "POST+/api/v1/users/register",
+    "POST+/api/v1/users/register-send-code",
+    "POST+/api/v1/users/reset-password",
+    "POST+/api/v1/users/reset-password-send-code",
+    "POST+/api/v1/users/refresh-credentials",
+    "GET+/api/v1/secret/public/key",
+    "GET+/api/v1/time/now",
+    "POST+/api/v1/versions/check",
+]
+referral_link_prefix = "http://127.0.0.1:40041/download"
+
+# PostgreSQL remains the only external dependency during this migration stage.
+[database]
+url = "postgres://simprint:change-me@127.0.0.1:5432/simprintdb"
+max_connections = 10
+min_connections = 1
+max_lifetime = 3000
+acquire_timeout = 30
+idle_timeout = 600
+
+[storage]
+public_base_url = "https://your-resource-download-host.example"
+avatar_root = "avatars"
+extension_root = "extensions"
+version_root = "versions"
+
+[workspace_quota]
+[workspace_quota.default]
+max_environments = 99999
+max_team_members = 99999
+max_proxies = 99999
+max_rpa_tasks = 99999
