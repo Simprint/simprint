@@ -183,8 +183,9 @@ mod tests {
         let encrypted = secret.encrypt(&json_bytes).expect("Encryption failed");
 
         // 下面连续的代码对应： crate::secret::rsa::get_rsa_secret_instance()
-        let public_key_str =
-            std::fs::read("../../assets/secret/public_key.pem").expect("读取公钥失败");
+        let public_key_path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/secret/public_key.pem");
+        let public_key_str = std::fs::read(public_key_path).expect("读取公钥失败");
         let public_key = String::from_utf8(public_key_str).expect("转换公钥失败");
         let public_key = rsa::RsaPublicKey::from_pkcs1_pem(&public_key)
             .map_err(|e| {

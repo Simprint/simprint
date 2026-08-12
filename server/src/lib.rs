@@ -1,5 +1,6 @@
 use crate::utils::IConfig;
 
+pub mod app;
 pub mod caches;
 pub mod cli;
 pub mod dto;
@@ -13,6 +14,8 @@ pub mod services;
 pub mod state;
 pub mod svc_ctx;
 pub mod utils;
+
+pub use app::{serve, serve_on, serve_on_with_shutdown};
 
 /// 初始化加密密钥
 pub async fn init_encrypt_secret(config: &IConfig) {

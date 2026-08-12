@@ -151,7 +151,8 @@ mod tests {
             age: u32,
         }
 
-        init_rsa_secret("../../assets/secret").await;
+        let secret_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/secret");
+        init_rsa_secret(secret_path.to_str().expect("invalid secret path")).await;
 
         let secret_instance = get_rsa_secret_instance();
 
