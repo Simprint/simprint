@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: simprint-postgres
+    environment:
+      POSTGRES_DB: simprintdb
+      POSTGRES_USER: simprint
+      POSTGRES_PASSWORD: change-me
+    volumes:
+      - simprint-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U simprint -d simprintdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - simprint-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: simprint-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - simprint-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - simprint-network
+
+  simprint-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BINARY_NAME: simprint-server
+    container_name: simprint-client-gateway
+    command: ["-f=/app/configs/config.toml"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "40041:40041"
+    volumes:
+      - ./configs:/app/configs:ro
+      - simprint-secret-data:/app/assets/secret
+    environment:
+      - RUST_LOG=info
+    restart: unless-stopped
+    networks:
+      - simprint-network
+
+networks:
+  simprint-network:
+    name: simprint-network
+
+volumes:
+  simprint-postgres-data:
+  simprint-redis-data:
+  simprint-secret-data:

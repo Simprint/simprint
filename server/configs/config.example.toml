@@ -1,0 +1,51 @@
+[app]
+name = "simprint-server"
+port = 40041
+secret = "change-this-to-a-long-random-secret"
+prefix = "/api/v1"
+encrypt_secret_location = "./assets/secret"
+route_whitelists = [
+    "POST+/api/v1/users/login",
+    "POST+/api/v1/users/register",
+    "POST+/api/v1/users/register-send-code",
+    "POST+/api/v1/users/reset-password",
+    "POST+/api/v1/users/reset-password-send-code",
+    "POST+/api/v1/users/refresh-credentials",
+    "GET+/api/v1/secret/public/key",
+    "GET+/api/v1/time/now",
+    "POST+/api/v1/versions/check"
+]
+referral_link_prefix = "https://your-domain.example/download"
+
+[database]
+url = "postgres://simprint:change-me@postgres:5432/simprintdb"
+max_connections = 25
+min_connections = 5
+max_lifetime = 3000
+acquire_timeout = 30
+idle_timeout = 600
+
+[redis]
+url = "redis://redis:6379?protocol=resp3"
+
+[storage]
+endpoint = "https://your-object-storage-endpoint.example"
+public_base_url = "https://your-object-storage-public.example"
+access_key = "change-me"
+secret_access_key = "change-me"
+bucket = "simprint-client"
+avatar_root = "avatars"
+extension_root = "extensions"
+version_root = "versions"
+
+[smtp]
+smtp_server = "smtp.example.com"
+smtp_username = "noreply@example.com"
+smtp_password = "change-me"
+
+[workspace_quota]
+[workspace_quota.default]
+max_environments = 99999
+max_team_members = 99999
+max_proxies = 99999
+max_rpa_tasks = 99999
