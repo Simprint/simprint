@@ -4,11 +4,15 @@ import { extensionRegistry, pluginRegistry } from '@slotkitjs/core';
 import { useRouteConfig } from '../../hooks/useRouteConfig';
 import type { RouteConfig } from '../../types';
 
+interface AppRoutesProps {
+  onReady?: () => void;
+}
+
 /**
  * 应用路由组件
  * 负责动态加载和管理路由
  */
-export const AppRoutes: React.FC = () => {
+export const AppRoutes: React.FC<AppRoutesProps> = ({ onReady }) => {
   const [routes, setRoutes] = useState<RouteConfig[]>([]);
 
   useEffect(() => {
@@ -51,6 +55,20 @@ export const AppRoutes: React.FC = () => {
   }, []);
 
   const routeElements = useRouteConfig(routes);
+
+  useEffect(() => {
+    if (routes.length === 0 || !onReady) return;
+
+    let secondFrame = 0;
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(onReady);
+    });
+
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      if (secondFrame) cancelAnimationFrame(secondFrame);
+    };
+  }, [routes, routeElements, onReady]);
 
   return useRoutes(routeElements);
 };

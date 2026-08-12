@@ -4,7 +4,7 @@ import type { TeamMember, Team } from '../../types';
 interface DialogState {
   // 邀请成员对话框
   inviteDialogOpen: boolean;
-  inviteEmail: string;
+  inviteUserUuid: string;
   inviteRole: TeamMember['role'];
 
   // 删除成员对话框
@@ -28,7 +28,7 @@ interface DialogState {
 interface DialogActions {
   // 邀请成员对话框
   setInviteDialogOpen: (open: boolean) => void;
-  setInviteEmail: (email: string) => void;
+  setInviteUserUuid: (userUuid: string) => void;
   setInviteRole: (role: TeamMember['role']) => void;
   openInviteDialog: () => void;
   closeInviteDialog: () => void;
@@ -66,7 +66,7 @@ interface DialogActions {
 export const useTeamDialogStore = create<DialogState & DialogActions>((set) => ({
   // 初始状态
   inviteDialogOpen: false,
-  inviteEmail: '',
+  inviteUserUuid: '',
   inviteRole: 'viewer',
   deleteDialogOpen: false,
   deletingMember: null,
@@ -80,10 +80,10 @@ export const useTeamDialogStore = create<DialogState & DialogActions>((set) => (
 
   // 邀请成员对话框
   setInviteDialogOpen: (open) => set({ inviteDialogOpen: open }),
-  setInviteEmail: (email) => set({ inviteEmail: email }),
+  setInviteUserUuid: (userUuid) => set({ inviteUserUuid: userUuid }),
   setInviteRole: (role) => set({ inviteRole: role }),
-  openInviteDialog: () => set({ inviteDialogOpen: true, inviteEmail: '', inviteRole: 'viewer' }),
-  closeInviteDialog: () => set({ inviteDialogOpen: false, inviteEmail: '', inviteRole: 'viewer' }),
+  openInviteDialog: () => set({ inviteDialogOpen: true, inviteUserUuid: '', inviteRole: 'viewer' }),
+  closeInviteDialog: () => set({ inviteDialogOpen: false, inviteUserUuid: '', inviteRole: 'viewer' }),
 
   // 删除成员对话框
   setDeleteDialogOpen: (open) => set({ deleteDialogOpen: open }),

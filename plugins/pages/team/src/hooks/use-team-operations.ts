@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { inviteMember, updateMemberRole, removeMember, batchRemoveMembers } from '../api';
+import { addMember as addLocalMember, updateMemberRole, removeMember, batchRemoveMembers } from '../api';
 import type { TeamMember } from '../types';
 
 export interface UseTeamOperationsReturn {
   submitting: boolean;
-  inviteMember: (email: string, role: TeamMember['role']) => Promise<{ invitationUuid: string }>;
+  addMember: (userUuid: string, role: TeamMember['role']) => Promise<{ memberUuid: string }>;
   deleteMember: (memberUuid: string) => Promise<void>;
   batchDeleteMembers: (memberUuids: string[]) => Promise<void>;
   changeMemberRole: (memberUuid: string, newRole: TeamMember['role']) => Promise<TeamMember>;
@@ -16,15 +16,14 @@ export interface UseTeamOperationsReturn {
 export function useTeamOperations(): UseTeamOperationsReturn {
   const [submitting, setSubmitting] = useState(false);
 
-  // 邀请成员（单个）
-  const inviteMemberOp = async (email: string, role: TeamMember['role']) => {
-    if (!email.trim()) {
-      throw new Error('请输入邮箱地址');
+  const addMember = async (userUuid: string, role: TeamMember['role']) => {
+    if (!userUuid) {
+      throw new Error('请选择本地用户');
     }
     setSubmitting(true);
     try {
-      const res = await inviteMember({ email, role });
-      return { invitationUuid: res.invitation_uuid };
+      const res = await addLocalMember({ user_uuid: userUuid, role });
+      return { memberUuid: res.member_uuid };
     } finally {
       setSubmitting(false);
     }
@@ -62,7 +61,7 @@ export function useTeamOperations(): UseTeamOperationsReturn {
 
   return {
     submitting,
-    inviteMember: inviteMemberOp,
+    addMember,
     deleteMember,
     batchDeleteMembers,
     changeMemberRole,

@@ -22,7 +22,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useUserMenuConfig } from './hooks/use-user-menu-config';
 import { getMyTeams, switchTeam, type TeamItem } from '../../api/teams';
 import { useWorkspaceStore } from '../../../../../services/store/src/stores/workspace';
@@ -56,7 +56,7 @@ export function UserMenu() {
   const { setCurrentTeam } = useAuthStore();
 
   const handleLogout = async () => {
-    // 先清理 Tauri 侧的 token / remembered credential，避免下次启动被自动登录拉起
+    // 清理当前本地会话，返回用户选择界面。
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('logout');
@@ -125,11 +125,7 @@ export function UserMenu() {
     }
   };
 
-  const displayName =
-    user && (user.nickname || user.email?.split('@')[0])
-      ? user.nickname || user.email!.split('@')[0]
-      : 'User';
-  const initial = displayName.charAt(0).toUpperCase();
+  const displayName = user?.nickname || t('status.user');
 
   // 获取当前工作空间
   const currentWorkspace = workspaces.find((ws) => ws.is_current);
@@ -144,9 +140,8 @@ export function UserMenu() {
         <DropdownMenuTrigger asChild>
           <button className="flex items-center gap-2 px-5 h-8 text-[10px] text-foreground bg-muted hover:bg-primary/10 hover:text-foreground transition-all cursor-pointer outline-none rounded-sm mx-2">
             <Avatar className="w-6 h-6">
-              {user.avatar && <AvatarImage src={user.avatar} alt={displayName} />}
               <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                {initial}
+                {user.avatar || displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <span className="font-mono tracking-tight text-[12px]">{displayName}</span>
@@ -157,11 +152,9 @@ export function UserMenu() {
           <DropdownMenuLabel>
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none">
-                {user.nickname || user.email?.split('@')[0] || t('status.user')}
+                {displayName}
               </p>
-              {user.email && (
-                <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
-              )}
+              <p className="text-xs leading-none text-muted-foreground">{user.avatar}</p>
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />

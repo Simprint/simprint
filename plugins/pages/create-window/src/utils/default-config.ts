@@ -30,6 +30,7 @@ export function getDefaultWindowConfig(): WindowConfig {
       name: '',
       system: defaultSystem,
       kernel: defaultKernel,
+      kernelId: '',
       userAgent: generateUserAgentByKernel(defaultSystem, defaultKernel),
       searchEngine: 'Google',
       proxySourceMode: 'remote',

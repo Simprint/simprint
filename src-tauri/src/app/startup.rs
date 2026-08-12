@@ -1,10 +1,16 @@
 use crate::app::init_state::AppInitState;
 use serde::Deserialize;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Manager};
 
 pub struct StartupService;
 
 const GENERAL_SETTINGS_STORE_KEY: &str = "general";
+
+/// 启动完成采用双就绪门闩：后端流程与主窗口前端必须都真实就绪。
+static BACKEND_STARTUP_READY: AtomicBool = AtomicBool::new(false);
+static MAIN_FRONTEND_READY: AtomicBool = AtomicBool::new(false);
+static STARTUP_COMPLETED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,8 +25,56 @@ fn should_start_minimized(app: &AppHandle) -> bool {
         .unwrap_or(false)
 }
 
+fn try_complete_startup(app: &AppHandle) -> Result<(), ()> {
+    let backend_ready = BACKEND_STARTUP_READY.load(Ordering::Acquire);
+    let frontend_ready = MAIN_FRONTEND_READY.load(Ordering::Acquire);
+
+    if !backend_ready || !frontend_ready {
+        log::info!(
+            "Startup gate waiting: backend_ready={backend_ready}, main_frontend_ready={frontend_ready}"
+        );
+        return Ok(());
+    }
+
+    if app.get_webview_window("main").is_none() {
+        log::error!("Startup gates are ready, but the main window does not exist");
+        return Err(());
+    }
+
+    if STARTUP_COMPLETED
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .is_err()
+    {
+        return Ok(());
+    }
+
+    log::info!("Startup gates satisfied; completing startup");
+
+    let mut app_state = AppInitState::default();
+    app_state.is_initialized = true;
+    app_state.is_updating = false;
+    let _ = crate::app::init_state::update_app_init_state(app_state);
+
+    if let Some(main_window) = app.get_webview_window("main") {
+        if should_start_minimized(app) {
+            log::info!("Start minimized is enabled; keeping the ready main window hidden");
+        } else {
+            let _ = main_window.show();
+            let _ = main_window.set_focus();
+            log::info!("Main window shown after both startup gates became ready");
+        }
+    }
+
+    // 先显示真正就绪的主窗口，再关闭启动页，避免桌面闪烁。
+    if let Some(splash_window) = app.get_webview_window("splashscreen") {
+        let _ = splash_window.close();
+    }
+
+    Ok(())
+}
+
 impl StartupService {
-    /// 设置应用为更新状态
+    /// 设置应用为更新状态。
     pub async fn set_updating_state() -> Result<(), ()> {
         let mut app_state = AppInitState::default();
         app_state.is_updating = true;
@@ -31,58 +85,49 @@ impl StartupService {
         Ok(())
     }
 
-    /// 获取应用状态
+    /// 获取应用状态。
     pub async fn get_app_state() -> Result<AppInitState, ()> {
-        let app_state = crate::app::init_state::read_app_init_state();
-        Ok(app_state)
+        Ok(crate::app::init_state::read_app_init_state())
     }
 
-    /// 完成加载并显示主窗口（关闭加载窗口并显示主窗口）
-    pub async fn complete_and_show_main(app: AppHandle) -> Result<(), ()> {
-        // 设置为已初始化状态
-        {
-            let mut app_state = AppInitState::default();
-            app_state.is_initialized = true;
-            app_state.is_updating = false;
-            let _ = crate::app::init_state::update_app_init_state(app_state);
-        }
-
-        // 关闭 splashscreen 窗口
-        if let Some(splash_window) = app.get_webview_window("splashscreen") {
-            let _ = splash_window.close();
-        }
-
-        // 按配置决定是否显示主窗口
-        if let Some(main_window) = app.get_webview_window("main") {
-            if should_start_minimized(&app) {
-                log::info!("启动时最小化已启用，主窗口保持隐藏");
-            } else {
-                let _ = main_window.show();
-                let _ = main_window.set_focus();
-                log::info!("主窗口已显示");
-            }
-        }
-
-        Ok(())
+    /// 记录隐藏主窗口的前端已经完成插件、认证、路由、字体与首帧布局。
+    pub async fn main_window_ready(app: AppHandle) -> Result<(), ()> {
+        MAIN_FRONTEND_READY.store(true, Ordering::Release);
+        log::info!("Main window frontend reported ready");
+        try_complete_startup(&app)
     }
 
-    /// 显示主窗口（由前端在内容渲染完成后调用）
+    /// 记录后端启动流程已经完成，并尝试与前端就绪状态汇合。
+    pub fn backend_startup_ready(app: &AppHandle) -> Result<(), ()> {
+        BACKEND_STARTUP_READY.store(true, Ordering::Release);
+        log::info!("Backend startup flow reported ready");
+        try_complete_startup(app)
+    }
+
+    /// 显示已经完成初始化的主窗口。
     pub async fn show_main_window(app: AppHandle) -> Result<(), ()> {
+        let app_state = crate::app::init_state::read_app_init_state();
+        if !app_state.is_initialized || app_state.is_updating {
+            log::warn!("Ignored a request to show the main window before startup completed");
+            return Ok(());
+        }
+
         if let Some(main_window) = app.get_webview_window("main") {
             if should_start_minimized(&app) {
-                log::info!("启动时最小化已启用，跳过主窗口显示");
+                log::info!("Start minimized is enabled; skipping main window display");
             } else {
                 let _ = main_window.show();
                 let _ = main_window.set_focus();
-                log::info!("主窗口已显示");
+                log::info!("Main window shown");
             }
         }
         Ok(())
     }
 
-    /// 通知后端前端 splashscreen 已准备好接收事件
+    /// 通知后端 splashscreen 已准备好接收进度事件。
     pub async fn splashscreen_ready() -> Result<(), ()> {
         crate::app::splashscreen::set_frontend_ready();
+        log::info!("Splashscreen frontend reported ready");
         Ok(())
     }
 }

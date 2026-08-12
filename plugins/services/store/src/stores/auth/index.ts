@@ -5,7 +5,4 @@ export { useAuthStore } from './auth-store';
 export type {
   AuthActions,
   AuthState,
-  LoginResponse,
-  TauriInvoke,
-  AuthStateSetter,
 } from './auth-store.types';

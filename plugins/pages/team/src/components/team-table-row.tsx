@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Crown, Shield, Pencil, Eye, MoreVertical, Trash2, Mail } from 'lucide-react';
+import { Crown, Shield, Pencil, Eye, MoreVertical, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +20,6 @@ import {
 export interface TeamMember {
   id: string;
   name: string;
-  email: string;
   avatar?: string;
   role: 'owner' | 'admin' | 'editor' | 'viewer';
   status: 'active' | 'pending' | 'inactive';
@@ -141,14 +140,10 @@ export function TeamTableRow({
       <DataTableCell>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
-            {initials}
+            {member.avatar || initials}
           </div>
           <div>
             <div className="font-bold text-foreground">{member.name}</div>
-            <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-              <Mail className="h-3 w-3" />
-              {member.email}
-            </div>
           </div>
         </div>
       </DataTableCell>

@@ -4,7 +4,7 @@
 
 use crate::core::error::Result;
 use crate::domain::environment::{EnvironmentStatus, KernelDetail};
-use std::fs;
+use tauri::Manager;
 
 pub mod downloader;
 pub mod extension;
@@ -19,12 +19,31 @@ pub mod verifier;
 // 重新导出常用类型
 pub use types::{
     AccountInfo, BatchLaunchRequest, BatchLaunchResult, CdpEndpointResponse, CookieGroup,
-    ExtensionInfo, KernelPrepareStatusPayload, KernelStatusEmitter, ProxyConfig, RpaTabInfo,
-    RpaTabCloseResult, RpaTabSelection, RpaTabsSnapshot,
+    ExtensionInfo, KernelPrepareStatusPayload, KernelStatusEmitter, ProxyConfig, RpaTabCloseResult,
+    RpaTabInfo, RpaTabSelection, RpaTabsSnapshot,
 };
 
 /// 内核服务
 pub struct KernelService;
+
+async fn record_ready_installation(
+    app: &tauri::AppHandle,
+    kernel_id: &str,
+    exe_path: &std::path::Path,
+    verified_signature: &str,
+) {
+    let context = app.state::<business::svc_ctx::SvcCtx>();
+    if let Err(error) = business::services::browser_kernels::record_kernel_installation(
+        &context.db,
+        kernel_id,
+        &exe_path.to_string_lossy(),
+        verified_signature,
+    )
+    .await
+    {
+        log::warn!("Failed to record browser kernel installation: {error}");
+    }
+}
 
 impl KernelService {
     /// 确保内核已就绪：目录不存在则下载并解压，存在则校验 chrome.dll 哈希
@@ -36,118 +55,172 @@ impl KernelService {
         kernel_detail: KernelDetail,
         status_emitter: Option<KernelStatusEmitter>,
     ) -> Result<String> {
-        let kernel_value = kernel_value.trim().to_string();
-        if kernel_value.is_empty() {
+        Self::ensure_kernel_ready_for_artifact(
+            app,
+            env_uuid,
+            kernel_value.clone(),
+            kernel_value,
+            profiles_path,
+            kernel_detail,
+            status_emitter,
+        )
+        .await
+    }
+
+    /// Prepare a registry artifact while keeping its immutable identity
+    /// separate from the backwards-compatible on-disk directory name.
+    pub async fn ensure_kernel_ready_for_artifact(
+        app: tauri::AppHandle,
+        env_uuid: Option<String>,
+        kernel_id: String,
+        install_dir_name: String,
+        profiles_path: String,
+        kernel_detail: KernelDetail,
+        status_emitter: Option<KernelStatusEmitter>,
+    ) -> Result<String> {
+        let kernel_id = kernel_id.trim().to_string();
+        if kernel_id.is_empty() {
+            return Err("内核标识不能为空".into());
+        }
+        let install_dir_name = install_dir_name.trim().to_string();
+        if install_dir_name.is_empty() {
             return Err("内核版本不能为空".into());
         }
 
-        let _prepare_guard = state::acquire_kernel_prepare_lock(&kernel_value).await;
+        let _prepare_guard = state::acquire_kernel_prepare_lock(&kernel_id).await;
         let base = utils::resolve_profiles_base(&app, &profiles_path)?;
-        let kernel_dir = base.join(&kernel_value);
+        let kernel_dir = utils::resolve_kernel_install_dir(&base, &install_dir_name)?;
         let exe_path = kernel_dir.join(utils::exe_name());
 
         // 目录已存在：校验内核
-        if kernel_dir.exists() && kernel_dir.is_dir() {
+        if kernel_dir.exists() {
+            if !kernel_dir.is_dir() {
+                return Err(format!("内核安装路径不是目录: {}", kernel_dir.display()).into());
+            }
             // 检查可执行文件是否存在
             if !exe_path.exists() {
                 crate::log_warn!(
                     crate::core::logger::modules::KERNEL,
-                    "内核目录存在但未找到可执行文件，删除目录并重新下载: {}",
+                    "内核目录存在但未找到可执行文件，保留目录并停止启动: {}",
                     kernel_dir.display()
                 );
                 utils::emit_status(
                     status_emitter.as_ref(),
                     &env_uuid,
-                    &kernel_value,
+                    &install_dir_name,
                     EnvironmentStatus::Error,
-                    Some("未找到可执行文件，重新下载"),
+                    Some("内核目录不完整"),
                     None,
                     None,
                     None,
                 );
-                let _ = fs::remove_dir_all(&kernel_dir);
+                return Err(
+                    format!("内核目录不完整，已保留原目录: {}", kernel_dir.display()).into(),
+                );
             } else {
                 // 校验 signature
-                let signature = kernel_detail
+                let primary_signature = kernel_detail
                     .signature
                     .as_deref()
                     .filter(|s| !s.trim().is_empty())
                     .ok_or("该内核版本缺少 signature，无法校验核心 DLL")?;
+                let mut accepted_signatures = vec![primary_signature.to_string()];
+                for signature in &kernel_detail.compatible_signatures {
+                    if !signature.trim().is_empty()
+                        && !accepted_signatures
+                            .iter()
+                            .any(|current| current.eq_ignore_ascii_case(signature.trim()))
+                    {
+                        accepted_signatures.push(signature.trim().to_string());
+                    }
+                }
 
                 match verifier::verify_kernel(
                     &app,
                     &env_uuid,
-                    &kernel_value,
+                    &install_dir_name,
                     &kernel_dir,
-                    signature,
+                    &accepted_signatures,
                     status_emitter.clone(),
                 ) {
-                    Ok(true) => {
+                    Ok(Some(verified_signature)) => {
                         // 校验通过
                         utils::emit_status(
                             status_emitter.as_ref(),
                             &env_uuid,
-                            &kernel_value,
+                            &install_dir_name,
                             EnvironmentStatus::Ready,
                             Some("就绪"),
                             None,
                             None,
                             None,
                         );
+                        record_ready_installation(&app, &kernel_id, &exe_path, &verified_signature)
+                            .await;
                         return Ok(exe_path.to_string_lossy().to_string());
                     }
-                    Ok(false) => {
-                        // 校验失败，删除目录重新下载
+                    Ok(None) => {
                         crate::log_warn!(
                             crate::core::logger::modules::KERNEL,
-                            "内核校验失败，删除目录并重新下载: {}",
+                            "内核校验失败，保留目录并停止启动: {}",
                             kernel_dir.display()
                         );
                         utils::emit_status(
                             status_emitter.as_ref(),
                             &env_uuid,
-                            &kernel_value,
+                            &install_dir_name,
                             EnvironmentStatus::Error,
-                            Some("校验失败，重新下载"),
+                            Some("内核校验失败"),
                             None,
                             None,
                             None,
                         );
-                        let _ = fs::remove_dir_all(&kernel_dir);
+                        return Err(format!(
+                            "内核校验失败，已保留原目录: {}",
+                            kernel_dir.display()
+                        )
+                        .into());
                     }
                     Err(e) => {
                         crate::log_warn!(
                             crate::core::logger::modules::KERNEL,
-                            "内核校验出错，删除目录并重新下载: {} - {}",
+                            "内核校验出错，保留目录并停止启动: {} - {}",
                             kernel_dir.display(),
                             e
                         );
                         utils::emit_status(
                             status_emitter.as_ref(),
                             &env_uuid,
-                            &kernel_value,
+                            &install_dir_name,
                             EnvironmentStatus::Error,
-                            Some("校验出错，重新下载"),
+                            Some("内核校验出错"),
                             None,
                             None,
                             None,
                         );
-                        let _ = fs::remove_dir_all(&kernel_dir);
+                        return Err(format!(
+                            "内核校验出错，已保留原目录 {}: {e}",
+                            kernel_dir.display()
+                        )
+                        .into());
                     }
                 }
             }
         }
 
-        // 目录不存在或校验失败：下载并安装
+        // 只有目录不存在时才下载；现有安装绝不在替代包准备好之前删除。
         let exe_path = downloader::download_and_install_kernel(
             &app,
             &env_uuid,
-            &kernel_value,
+            &install_dir_name,
             &kernel_dir,
             &kernel_detail,
             status_emitter,
         )
         .await?;
+
+        let verified_signature = kernel_detail.signature.as_deref().unwrap_or_default();
+        record_ready_installation(&app, &kernel_id, &exe_path, verified_signature).await;
 
         Ok(exe_path.to_string_lossy().to_string())
     }

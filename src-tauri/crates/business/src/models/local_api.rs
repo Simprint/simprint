@@ -327,12 +327,7 @@ pub fn build_cors_origins_value(origins: &[String]) -> Value {
 pub fn parse_cors_origins(value: &Value) -> Vec<String> {
     value
         .as_array()
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(|item| item.as_str().map(ToOwned::to_owned))
-                .collect()
-        })
+        .map(|items| items.iter().filter_map(|item| item.as_str().map(ToOwned::to_owned)).collect())
         .unwrap_or_default()
 }
 

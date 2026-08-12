@@ -9,7 +9,7 @@ use axum::http::StatusCode;
 use serde_json::Value;
 
 use crate::local_api::{
-    client::main_server::proxy_request, context::LocalApiRequestContext, types::LocalApiRoute,
+    client::business::dispatch_request, context::LocalApiRequestContext, types::LocalApiRoute,
 };
 
 pub async fn forward_service(
@@ -17,7 +17,7 @@ pub async fn forward_service(
     payload: Value,
     route: LocalApiRoute,
 ) -> Result<Value, (StatusCode, String)> {
-    let response = proxy_request(
+    let response = dispatch_request(
         route.server_path,
         route.permission_code,
         &ctx.api_key,

@@ -27,6 +27,17 @@ pub fn resolve_profiles_base(
     crate::core::paths::PathManager::get_profiles_dir(app).map_err(Into::into)
 }
 
+/// Resolve a catalog-provided installation directory without allowing it to
+/// escape the profiles root.
+pub fn resolve_kernel_install_dir(base: &Path, install_dir_name: &str) -> Result<PathBuf> {
+    let install_dir_name = install_dir_name.trim();
+    let mut components = Path::new(install_dir_name).components();
+    match (components.next(), components.next()) {
+        (Some(std::path::Component::Normal(_)), None) => Ok(base.join(install_dir_name)),
+        _ => Err("内核安装目录名称无效".into()),
+    }
+}
+
 /// 将 zip 解压到目标目录
 pub fn extract_zip_to_dir(zip_path: &Path, target_dir: &Path) -> Result<()> {
     let file = fs::File::open(zip_path)?;
@@ -134,5 +145,23 @@ pub fn emit_status(
             downloaded,
             total,
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_kernel_install_dir;
+    use std::path::Path;
+
+    #[test]
+    fn kernel_install_dir_must_be_one_normal_component() {
+        let base = Path::new("profiles");
+        assert_eq!(
+            resolve_kernel_install_dir(base, "Chrome 144").unwrap(),
+            base.join("Chrome 144")
+        );
+        assert!(resolve_kernel_install_dir(base, "").is_err());
+        assert!(resolve_kernel_install_dir(base, "..").is_err());
+        assert!(resolve_kernel_install_dir(base, "nested/kernel").is_err());
     }
 }

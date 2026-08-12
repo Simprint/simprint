@@ -17,10 +17,7 @@ pub struct FindProcessResult {
 
 fn normalize_process_identity(value: &str) -> String {
     let normalized = value.trim().to_ascii_lowercase();
-    normalized
-        .strip_suffix(".exe")
-        .unwrap_or(&normalized)
-        .to_string()
+    normalized.strip_suffix(".exe").unwrap_or(&normalized).to_string()
 }
 
 fn process_matches_candidate(

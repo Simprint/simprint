@@ -1,8 +1,3 @@
-/// HTTP 客户端基础模块
+/// HTTP response types shared by the Tauri command and local API layers.
 pub mod client;
-
-/// HTTP 加密模块
-pub mod encryption;
-
-// 重导出常用类型
-pub use client::{AfterCallFunction, BeforeCallFunction, Client, JsonRespnse};
+pub use client::JsonRespnse;

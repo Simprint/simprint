@@ -77,25 +77,6 @@ fn emit_status_complete(app_handle: &AppHandle, status: &str) {
     }
 }
 
-/// 发射加载完成事件
-fn emit_ready(app_handle: &AppHandle) {
-    // 向 splashscreen 窗口发送加载完成事件
-    if let Some(splash_window) = app_handle.get_webview_window("splashscreen") {
-        let _ = splash_window.emit("splashscreen-ready", ());
-    }
-    // 向主窗口发送加载完成事件，通知主窗口加载逻辑已完成
-    if let Some(main_window) = app_handle.get_webview_window("main") {
-        let _ = main_window.emit("splashscreen-loading-complete", ());
-    }
-}
-
-/// 发射连接失败事件（公钥初始化失败时调用，停止后续流程）
-fn emit_connection_failed(app_handle: &AppHandle) {
-    if let Some(splash_window) = app_handle.get_webview_window("splashscreen") {
-        let _ = splash_window.emit("splashscreen-connection-failed", ());
-    }
-}
-
 /// 初始化应用启动流程（显示 splashscreen 并控制加载）
 pub fn init_startup(app_handle: AppHandle) {
     // 注意：splashscreen 窗口由前端控制显示，确保内容准备好后再显示
@@ -105,19 +86,18 @@ pub fn init_startup(app_handle: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let app_handle_clone = app_handle.clone();
 
-        // 等待前端通知准备就绪（无限期等待，直到前端调用 splashscreen_ready）
+        // 等待前端完成首帧渲染并明确通知后端，再开始本地启动流程。
         while !is_frontend_ready() {
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
         }
 
-        // 步骤1: 初始化应用
+        // 后端初始化在 Tauri setup 阶段已经完成。这里只同步真实状态，
+        // 不再用固定延迟模拟工作进度。
         emit_progress(&app_handle_clone, 10, "正在初始化...", Some("init"));
-        tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
         emit_status_complete(&app_handle_clone, "init");
 
         // 步骤2: 加载配置
         emit_progress(&app_handle_clone, 30, "加载配置中...", Some("config"));
-        tokio::time::sleep(tokio::time::Duration::from_millis(400)).await;
         emit_status_complete(&app_handle_clone, "config");
 
         // 步骤3: 初始化安全上下文
@@ -127,32 +107,13 @@ pub fn init_startup(app_handle: AppHandle) {
             "初始化安全上下文...",
             Some("security"),
         );
-        tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
         emit_status_complete(&app_handle_clone, "security");
 
-        // 步骤4: 连接服务器
-        emit_progress(&app_handle_clone, 70, "连接服务器...", Some("server"));
-
-        // 等待服务器连接（使用现有的后台初始化）
-        // 这里我们等待一段时间，实际连接由 init_server_public_key_background 处理
-        tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
-
-        // 检查服务器连接状态
-        if let Err(e) =
-            crate::infrastructure::persistence::credential::init_server_public_key().await
-        {
-            log::warn!("Server connection failed: {}", e);
-            emit_status_complete(&app_handle_clone, "server");
-            emit_progress(&app_handle_clone, 90, "服务器连接失败", None);
-            // 发送连接失败事件，停止后续流程
-            emit_connection_failed(&app_handle_clone);
-            // 不再继续后续步骤（不创建主窗口，不发送 ready 事件）
-            return;
-        }
-
-        log::info!("Server connection successful");
-        emit_status_complete(&app_handle_clone, "server");
-        emit_progress(&app_handle_clone, 90, "服务器连接成功", None);
+        // 步骤4: 本地业务数据库已经在 Tauri setup 阶段完成初始化。
+        // 启动流程不再连接远程业务服务器，也不再依赖远程公钥。
+        emit_progress(&app_handle_clone, 70, "加载本地数据...", Some("local-data"));
+        emit_status_complete(&app_handle_clone, "local-data");
+        emit_progress(&app_handle_clone, 90, "本地数据已就绪", None);
 
         // 步骤4.1: 检查并处理更新（自动检查、下载、安装）
         // 跳过参数只在更新入口消费，不传入更新服务、下载器或安装器。
@@ -234,20 +195,30 @@ pub fn init_startup(app_handle: AppHandle) {
             }
         }
 
-        // 创建主窗口（在步骤4完成后）
-        if let Err(e) = crate::commands::window::create_main_window(app_handle_clone.clone()).await
-        {
-            log::error!("Failed to create main window: {}", e);
-            // 不阻止加载流程继续
+        // 后端流程完成后再创建隐藏主窗口，避免开发模式下两个 WebView
+        // 同时冷启动并争用 Vite 转换资源。主窗口仍需通过前端真实就绪门闩。
+        if let Err(error) = crate::commands::window::create_main_window(app_handle_clone.clone()) {
+            log::error!("Failed to create main window: {error}");
+            emit_progress(
+                &app_handle_clone,
+                100,
+                "主窗口创建失败",
+                Some("main-window"),
+            );
+            return;
         }
+        log::info!("Hidden main window created after backend startup flow");
 
-        // 步骤5: 准备就绪
-        emit_progress(&app_handle_clone, 100, "准备就绪", Some("ready"));
-        tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
-        emit_status_complete(&app_handle_clone, "ready");
+        emit_progress(
+            &app_handle_clone,
+            100,
+            "正在准备主窗口...",
+            Some("main-window"),
+        );
 
-        // 发射加载完成事件（前端会自动关闭 splashscreen 并显示主窗口）
-        emit_ready(&app_handle_clone);
+        if crate::app::startup::StartupService::backend_startup_ready(&app_handle_clone).is_err() {
+            log::error!("Failed to complete the backend startup gate");
+        }
     });
 }
 

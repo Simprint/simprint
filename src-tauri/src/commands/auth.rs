@@ -1,80 +1,89 @@
-/// 认证模块命令
-///
-/// 命令层仅负责参数解析和响应，业务逻辑由服务层处理
-use crate::core::error::Result;
-use crate::infrastructure::http::client::JsonRespnse;
-use crate::services::auth::{CredentialService, LoginService, RegisterService};
+use business::services::local_users::{CreateLocalUserRequest, LocalUser, LoginLocalUserRequest};
 
-// 重导出类型供外部使用
-pub use crate::services::auth::{
-    BasicLoginRequest, LoginResponse, LoginType, RegisterRequest, RememberPasswordLoginRequest,
-};
+use crate::app::context::AppContext;
 
-// ============================================================================
-// 登录相关命令
-// ============================================================================
-
-/// 登录命令
 #[tauri::command]
-pub async fn login(payload: LoginType) -> Result<JsonRespnse> {
-    LoginService::login(payload).await
+pub async fn list_local_users(
+    context: tauri::State<'_, business::svc_ctx::SvcCtx>,
+) -> Result<Vec<LocalUser>, String> {
+    business::services::local_users::list_local_users(&context).await
 }
 
-/// 保存凭证命令
 #[tauri::command]
-pub async fn save_credential(
-    access_token: Option<String>,
-    refresh_token: Option<String>,
-) -> Result<()> {
-    LoginService::save_credential(access_token, refresh_token).await
+pub async fn create_local_user(
+    payload: CreateLocalUserRequest,
+    context: tauri::State<'_, business::svc_ctx::SvcCtx>,
+) -> Result<LocalUser, String> {
+    let user = business::services::local_users::create_local_user(&context, &payload).await?;
+    context.authenticate_user(user.uuid);
+    sync_local_session().await?;
+    Ok(user)
 }
 
-// ============================================================================
-// 注册相关命令
-// ============================================================================
-
-/// 注册命令
 #[tauri::command]
-pub async fn register(payload: RegisterRequest) -> Result<JsonRespnse> {
-    RegisterService::register(payload).await
+pub async fn login_local_user(
+    payload: LoginLocalUserRequest,
+    context: tauri::State<'_, business::svc_ctx::SvcCtx>,
+) -> Result<LocalUser, String> {
+    let user = business::services::local_users::authenticate_local_user(&context, &payload).await?;
+    sync_local_session().await?;
+    Ok(user)
 }
 
-// ============================================================================
-// 凭证管理命令
-// ============================================================================
-
-/// 退出登录
 #[tauri::command]
-pub async fn logout() -> Result<()> {
-    CredentialService::logout().await
+pub async fn get_current_local_user(
+    context: tauri::State<'_, business::svc_ctx::SvcCtx>,
+) -> Result<Option<LocalUser>, String> {
+    business::services::local_users::current_local_user(&context).await
 }
 
-/// 获取登录凭证（access_token）
 #[tauri::command]
-pub async fn get_access_token() -> Result<String> {
-    CredentialService::get_access_token()
+pub async fn verify_local_user_password(
+    password: Option<String>,
+    context: tauri::State<'_, business::svc_ctx::SvcCtx>,
+) -> Result<(), String> {
+    let user_uuid = context.current_user_uuid().ok_or_else(|| "尚未选择本地用户".to_string())?;
+    business::services::local_users::verify_local_user_password(
+        &context,
+        user_uuid,
+        password.as_deref(),
+    )
+    .await
 }
 
-/// 检查是否已登录
 #[tauri::command]
-pub async fn is_logged_in() -> Result<bool> {
-    Ok(CredentialService::is_logged_in())
+pub async fn logout(context: tauri::State<'_, business::svc_ctx::SvcCtx>) -> Result<(), String> {
+    context.clear_authenticated_user();
+    if let Some(app_context) = AppContext::try_get() {
+        app_context.mcp_manager.stop().await;
+        app_context.local_api_manager.stop().await;
+        app_context.simprint_runtime_manager.stop().await;
+    }
+    Ok(())
 }
 
-/// 保存记住的凭证（用于"记住密码"功能）
 #[tauri::command]
-pub async fn save_remembered_credential(email: String, refresh_token: String) -> Result<()> {
-    CredentialService::save_remembered_credential(email, refresh_token)
+pub fn is_logged_in(context: tauri::State<'_, business::svc_ctx::SvcCtx>) -> bool {
+    context.current_user_uuid().is_some()
 }
 
-/// 获取记住的凭证（用于自动登录）
-#[tauri::command]
-pub async fn get_remembered_credential() -> Result<Option<(String, String)>> {
-    CredentialService::get_remembered_credential()
+async fn sync_local_session() -> Result<(), String> {
+    if let Some(context) = AppContext::try_get() {
+        context
+            .simprint_runtime_manager
+            .sync_session_state()
+            .await
+            .map_err(|error| error.to_string())?;
+    }
+    Ok(())
 }
 
-/// 清除记住的凭证
-#[tauri::command]
-pub async fn clear_remembered_credential() -> Result<()> {
-    CredentialService::clear_remembered_credential()
+pub(crate) fn authenticated_user_uuid() -> Option<uuid::Uuid> {
+    use tauri::Manager;
+    let app = crate::app::handle::get_app_handle().ok()?;
+    app.state::<business::svc_ctx::SvcCtx>().current_user_uuid()
+}
+
+pub(crate) fn has_local_session() -> bool {
+    authenticated_user_uuid().is_some()
 }

@@ -1,235 +1,163 @@
-import { type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
-import { Mail, Lock, ArrowLeft, UserPlus, Send, Key } from 'lucide-react';
+import { ArrowLeft, LoaderCircle, LockKeyhole, UserPlus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { TextareaInput } from '@/components/textarea-input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useTranslation } from 'react-i18next';
-import { useRegisterForm } from '../hooks/use-register-form';
-import { useRegisterValidation } from '../hooks/use-register-validation';
-import { useRegisterCode } from '../hooks/use-register-code';
-import { useRegister } from '../hooks/use-register';
-import { CODE_MAX_LENGTH } from '../constants';
+import { toast } from 'sonner';
+import { useAuth } from '../../../../services/store/src';
+import { createLocalUser } from '../api';
+import { LocalNicknameInput } from './local-nickname-input';
+
+const AVATARS = ['🙂', '😎', '🦊', '🐼', '🐯', '🐙', '🦉', '🐳', '🌙', '⭐', '🌿', '🚀'];
+const CHINESE_NICKNAME_PARTS = {
+  adjectives: ['安静的', '自由的', '幸运的', '勇敢的', '好奇的', '闪亮的', '悠闲的', '快乐的'],
+  nouns: ['星河', '旅人', '狐狸', '鲸鱼', '猫头鹰', '月光', '青竹', '火箭'],
+};
+const ENGLISH_NICKNAME_PARTS = {
+  adjectives: ['Quiet', 'Free', 'Lucky', 'Brave', 'Curious', 'Bright', 'Easygoing', 'Happy'],
+  nouns: ['Voyager', 'Fox', 'Whale', 'Owl', 'Moon', 'Bamboo', 'Rocket', 'Comet'],
+};
+
+function randomAvatar(current: string): string {
+  const alternatives = AVATARS.filter((avatar) => avatar !== current);
+  return alternatives[Math.floor(Math.random() * alternatives.length)] || AVATARS[0];
+}
+
+function randomNickname(language: string, current: string): string {
+  const parts = language.toLowerCase().startsWith('zh')
+    ? CHINESE_NICKNAME_PARTS
+    : ENGLISH_NICKNAME_PARTS;
+  const adjective = parts.adjectives[Math.floor(Math.random() * parts.adjectives.length)];
+  const noun = parts.nouns[Math.floor(Math.random() * parts.nouns.length)];
+  const candidate = `${adjective}${noun}`;
+  return candidate === current.trim()
+    ? `${candidate}${Math.floor(Math.random() * 90) + 10}`
+    : candidate;
+}
 
 export const RegisterForm: React.FC = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation('auth');
+  const { t, i18n } = useTranslation('auth');
+  const { setUser } = useAuth();
+  const [nickname, setNickname] = useState('');
+  const [avatar, setAvatar] = useState(() => randomAvatar(''));
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  // 表单状态管理
-  const { formData, setEmail, setPassword, setConfirmPassword, setCode } = useRegisterForm();
-
-  // 表单验证
-  const { errors, validateForm, validateEmail, clearErrors, setEmailError, setCodeError } =
-    useRegisterValidation();
-
-  // 验证码管理
-  const { codeSent, countdown, sendCode, resetCode } = useRegisterCode();
-
-  // 注册操作
-  const { handleRegister } = useRegister();
-
-  // 处理发送验证码
-  const handleSendCode = async () => {
-    clearErrors();
-
-    // 验证邮箱
-    if (!validateEmail(formData.email)) {
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!nickname.trim()) {
+      setError(t('register.nicknameRequired'));
       return;
     }
-
+    setSubmitting(true);
+    setError('');
     try {
-      await sendCode(formData.email);
-    } catch (error: any) {
-      setEmailError(error?.message || error?.toString() || '发送验证码失败');
-    }
-  };
-
-  // 处理邮箱变化
-  const handleEmailChange = (value: string) => {
-    setEmail(value);
-    clearErrors();
-    resetCode();
-    setCode('');
-  };
-
-  // 处理表单提交
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-
-    // 清除之前的错误
-    clearErrors();
-
-    // 验证表单
-    if (!validateForm(formData, codeSent)) {
-      return;
-    }
-
-    // 执行注册
-    try {
-      await handleRegister(formData);
-    } catch (error: any) {
-      console.error('注册失败:', error);
-      const errorMessage = error?.message || error?.toString() || '注册失败，请重试';
-      setCodeError(errorMessage);
+      const user = await createLocalUser({
+        nickname: nickname.trim(),
+        avatar,
+        password: password || null,
+      });
+      setUser({
+        uuid: user.uuid,
+        id: user.uuid,
+        nickname: user.nickname,
+        avatar: user.avatar,
+        has_password: user.hasPassword,
+        status: 'active',
+        current_workspace_uuid: user.currentWorkspaceUuid ?? null,
+        current_team_uuid: user.currentTeamUuid ?? null,
+      });
+      navigate('/');
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : String(reason);
+      setError(message);
+      toast.error(message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <>
       <div className="text-center mb-10">
+        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-lg border bg-muted text-2xl">
+          {avatar}
+        </div>
         <h1 className="mb-2 tracking-tight">{t('register.title')}</h1>
-        <p className="text-muted-foreground">{t('register.subtitle')}</p>
+        <p>{t('register.subtitle')}</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={submit} className="space-y-5" autoComplete="off">
         <div className="space-y-2">
-          <Label htmlFor="registerEmail">邮箱地址</Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-            <TextareaInput
-              id="registerEmail"
-              placeholder="请输入您的邮箱"
-              value={formData.email}
-              onChange={(e) => handleEmailChange(e.target.value)}
-              aria-invalid={!!errors.email}
-              className="pl-9"
-              required
-            />
-          </div>
-          {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+          <Label htmlFor="localNickname">{t('register.nicknameLabel')}</Label>
+          <LocalNicknameInput
+            id="localNickname"
+            autoFocus
+            value={nickname}
+            avatar={avatar}
+            placeholder={t('register.nicknamePlaceholder')}
+            randomAvatarLabel={t('register.randomAvatar')}
+            randomNicknameLabel={t('register.randomNickname')}
+            invalid={!!error && !nickname.trim()}
+            onRandomizeAvatar={() => setAvatar(randomAvatar(avatar))}
+            onRandomizeNickname={() => {
+              setNickname(randomNickname(i18n.resolvedLanguage ?? i18n.language, nickname));
+              setAvatar(randomAvatar(avatar));
+              setError('');
+            }}
+            onChange={(value) => {
+              setNickname(value);
+              setError('');
+            }}
+          />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="registerCode">验证码</Label>
-          {!codeSent ? (
-            // 默认状态：只显示发送验证码按钮
-            <Button type="button" variant="outline" onClick={handleSendCode} className="w-full h-9">
-              <Send className="size-4 mr-2" />
-              发送验证码
-            </Button>
-          ) : (
-            // 发送后：显示输入框
-            <div className="space-y-2">
-              {countdown > 0 ? (
-                // 倒计时中：只显示输入框
-                <>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-                    <TextareaInput
-                      id="registerCode"
-                      placeholder="请输入验证码"
-                      value={formData.code}
-                      onChange={(e) => {
-                        setCode(e.target.value);
-                        clearErrors();
-                      }}
-                      aria-invalid={!!errors.code}
-                      className="pl-9"
-                      required
-                      maxLength={CODE_MAX_LENGTH}
-                    />
-                  </div>
-                  {errors.code && <p className="text-sm text-destructive">{errors.code}</p>}
-                  <p className="text-sm text-muted-foreground">
-                    验证码已发送，{countdown} 秒后可重新发送
-                  </p>
-                </>
-              ) : (
-                // 过期后：输入框和发送按钮在同一行
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-                    <TextareaInput
-                      id="registerCode"
-                      placeholder="请输入验证码"
-                      value={formData.code}
-                      onChange={(e) => {
-                        setCode(e.target.value);
-                        clearErrors();
-                      }}
-                      aria-invalid={!!errors.code}
-                      className="pl-9"
-                      required
-                      maxLength={CODE_MAX_LENGTH}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleSendCode}
-                    className="shrink-0 h-9"
-                  >
-                    <Send className="size-4 mr-2" />
-                    发送验证码
-                  </Button>
-                </div>
-              )}
-              {errors.code && countdown === 0 && (
-                <p className="text-sm text-destructive">{errors.code}</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="registerPassword">密码</Label>
+          <Label htmlFor="localUserPassword">{t('register.passwordLabel')}</Label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+            <span className="pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center text-muted-foreground">
+              <LockKeyhole className="size-4" />
+            </span>
             <Input
+              id="localUserPassword"
+              name="local-profile-password"
               type="password"
-              id="registerPassword"
-              placeholder="至少8个字符"
-              value={formData.password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                clearErrors();
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setError('');
               }}
-              aria-invalid={!!errors.password}
-              className="pl-9"
-              required
-              minLength={8}
+              placeholder={t('register.passwordPlaceholder')}
+              autoComplete="new-password"
+              className="pl-10"
             />
           </div>
-          {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+          <p className="text-muted-foreground">{t('register.passwordHint')}</p>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="registerConfirmPassword">确认密码</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-            <Input
-              type="password"
-              id="registerConfirmPassword"
-              placeholder="请再次输入密码"
-              value={formData.confirmPassword}
-              onChange={(e) => {
-                setConfirmPassword(e.target.value);
-                clearErrors();
-              }}
-              aria-invalid={!!errors.confirmPassword}
-              className="pl-9"
-              required
-            />
-          </div>
-          {errors.confirmPassword && (
-            <p className="text-sm text-destructive">{errors.confirmPassword}</p>
-          )}
-        </div>
+        {error && <p className="text-destructive">{error}</p>}
 
-        <div className="flex gap-3 flex-row-reverse">
-          <Button type="submit" className="flex-1">
-            <UserPlus className="size-4" />
-            注册
-          </Button>
+        <div className="flex gap-3">
           <Button
             type="button"
             variant="outline"
             size="icon"
             onClick={() => navigate('/auth/login')}
-            title="返回登录"
+            title={t('register.back')}
           >
             <ArrowLeft className="size-4" />
+          </Button>
+          <Button type="submit" className="flex-1" disabled={submitting || !nickname.trim()}>
+            {submitting ? (
+              <LoaderCircle className="size-4 animate-spin" />
+            ) : (
+              <UserPlus className="size-4" />
+            )}
+            {t('register.submit')}
           </Button>
         </div>
       </form>

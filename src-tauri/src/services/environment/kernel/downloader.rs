@@ -122,15 +122,27 @@ pub async fn download_and_install_kernel(
 
 /// 下载文件
 async fn download_file(
-    app: &tauri::AppHandle,
+    _app: &tauri::AppHandle,
     env_uuid: &Option<String>,
     kernel_value: &str,
     url: &str,
     zip_path: &Path,
     status_emitter: Option<KernelStatusEmitter>,
 ) -> Result<()> {
+    let display_url = redact_download_url(url);
+    crate::log_info!(
+        crate::core::logger::modules::KERNEL,
+        "开始下载内核: {}",
+        display_url
+    );
     let client = reqwest::Client::new();
     let res = client.get(url).send().await.map_err(|e| {
+        crate::log_error!(
+            crate::core::logger::modules::KERNEL,
+            "内核下载请求失败: {} - {}",
+            display_url,
+            e
+        );
         emit_status(
             status_emitter.as_ref(),
             env_uuid,
@@ -145,6 +157,12 @@ async fn download_file(
     })?;
 
     if !res.status().is_success() {
+        crate::log_error!(
+            crate::core::logger::modules::KERNEL,
+            "内核下载失败: HTTP {} - {}",
+            res.status(),
+            display_url
+        );
         emit_status(
             status_emitter.as_ref(),
             env_uuid,
@@ -243,6 +261,19 @@ async fn download_file(
     }
 
     Ok(())
+}
+
+fn redact_download_url(url: &str) -> String {
+    match reqwest::Url::parse(url) {
+        Ok(mut parsed) => {
+            let _ = parsed.set_username("");
+            let _ = parsed.set_password(None);
+            parsed.set_query(None);
+            parsed.set_fragment(None);
+            parsed.to_string()
+        }
+        Err(_) => "<invalid kernel download URL>".to_string(),
+    }
 }
 
 /// 校验下载文件哈希
@@ -386,4 +417,23 @@ fn verify_core_dll_signature(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::redact_download_url;
+
+    #[test]
+    fn download_log_url_does_not_include_credentials() {
+        assert_eq!(
+            redact_download_url(
+                "https://user:password@example.test/kernel.zip?token=secret#fragment"
+            ),
+            "https://example.test/kernel.zip"
+        );
+        assert_eq!(
+            redact_download_url("not a url"),
+            "<invalid kernel download URL>"
+        );
+    }
 }

@@ -104,6 +104,23 @@ pub async fn fetch_user_teams(
     Ok(recs)
 }
 
+/// 查询用户在本机加入的全部团队，不以当前工作空间为边界。
+pub async fn fetch_all_user_teams(pool: &Pool<Db>, user_uuid: Uuid) -> Result<Vec<TeamDto>, Error> {
+    sqlx::query_as::<_, TeamDto>(
+        r#"
+        SELECT t.id, t.uuid, t.workspace_uuid, t.name, t.description, t.owner_uuid, t.avatar_hash,
+               t.status, t.created_at, t.updated_at, t.deleted_at
+        FROM teams t
+        INNER JOIN team_members tm ON t.uuid = tm.team_uuid
+        WHERE tm.user_uuid = $1 AND t.deleted_at IS NULL AND tm.deleted_at IS NULL
+        ORDER BY t.created_at
+        "#,
+    )
+    .bind(user_uuid)
+    .fetch_all(pool)
+    .await
+}
+
 /// 查询用户当前团队
 pub async fn fetch_user_current_team(
     pool: &Pool<Db>,
@@ -189,10 +206,7 @@ pub async fn update_team(
     query.push_str(&format!("{}", params.len()));
 
     // 这里需要动态构建查询，但 sqlx 不支持动态查询，所以使用条件分支
-    if name.is_some()
-        && description.is_some()
-        && avatar_hash.is_some()
-    {
+    if name.is_some() && description.is_some() && avatar_hash.is_some() {
         sqlx::query(
             r#"
         UPDATE teams
@@ -640,10 +654,7 @@ pub async fn fetch_invitation_by_token(
 }
 
 /// 取消邀请
-pub async fn cancel_team_invitation(
-    pool: &Pool<Db>,
-    invitation_uuid: Uuid,
-) -> Result<(), Error> {
+pub async fn cancel_team_invitation(pool: &Pool<Db>, invitation_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE team_invitations

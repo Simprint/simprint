@@ -250,10 +250,7 @@ pub async fn delete_rpa_task(pool: &Pool<Db>, task_uuid: Uuid) -> Result<(), Err
 }
 
 /// 批量软删除 RPA 任务
-pub async fn batch_delete_rpa_tasks(
-    pool: &Pool<Db>,
-    task_uuids: &[Uuid],
-) -> Result<u64, Error> {
+pub async fn batch_delete_rpa_tasks(pool: &Pool<Db>, task_uuids: &[Uuid]) -> Result<u64, Error> {
     if task_uuids.is_empty() {
         return Ok(0);
     }
@@ -392,10 +389,7 @@ pub async fn fetch_rpa_task_environments(
 }
 
 /// 删除任务所有环境关联
-pub async fn delete_rpa_task_environments(
-    pool: &Pool<Db>,
-    task_uuid: Uuid,
-) -> Result<(), Error> {
+pub async fn delete_rpa_task_environments(pool: &Pool<Db>, task_uuid: Uuid) -> Result<(), Error> {
     sqlx::query("DELETE FROM rpa_task_environments WHERE task_uuid = $1")
         .bind(task_uuid)
         .execute(pool)

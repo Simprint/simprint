@@ -19,7 +19,7 @@ pub mod window;
 pub fn register_handles() -> impl Fn(Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
     tauri::generate_handler![
         // App commands
-        app::complete_and_show_main,
+        app::main_window_ready,
         app::show_main_window,
         app::get_auto_start_state,
         app::set_auto_start_enabled,
@@ -62,31 +62,24 @@ pub fn register_handles() -> impl Fn(Invoke<tauri::Wry>) -> bool + Send + Sync +
         file_system::get_storage_default_paths,
         file_system::get_directory_sizes,
         // Security commands
-        security::get_client_public_key,
         security::report_user_activity,
         security::get_session_lock_state,
         security::unlock_session,
         // Network commands
-        network::http_get,
         network::http_post,
-        network::http_post_form,
-        network::http_put,
-        network::http_delete,
         network::test_proxy,
         network::test_direct_ip,
         network::detect_proxy_ip,
         network::download_files,
         rpa::execute_local_rpa_script,
         // Auth commands
-        auth::login,
-        auth::register,
+        auth::list_local_users,
+        auth::create_local_user,
+        auth::login_local_user,
+        auth::get_current_local_user,
+        auth::verify_local_user_password,
         auth::logout,
-        auth::save_credential,
-        auth::get_access_token,
         auth::is_logged_in,
-        auth::save_remembered_credential,
-        auth::get_remembered_credential,
-        auth::clear_remembered_credential,
         // Updater commands
         updater::check_update_available,
         updater::check_updates,

@@ -14,23 +14,23 @@ interface UseTeamHandlersParams {
 export function useTeamHandlers({ operations, onRefresh }: UseTeamHandlersParams) {
   const dialogStore = useTeamDialogStore();
 
-  // 邀请成员
+  // 添加本地成员
   const handleInvite = () => {
     dialogStore.openInviteDialog();
   };
 
   const handleSubmitInvite = async () => {
-    if (!dialogStore.inviteEmail.trim()) {
-      toast.warning('请输入邮箱地址');
+    if (!dialogStore.inviteUserUuid) {
+      toast.warning('请选择本地用户');
       return;
     }
     try {
-      await operations.inviteMember(dialogStore.inviteEmail, dialogStore.inviteRole);
+      await operations.addMember(dialogStore.inviteUserUuid, dialogStore.inviteRole);
       dialogStore.closeInviteDialog();
-      toast.success('邀请已发送');
+      toast.success('本地用户已加入团队');
       await onRefresh();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : '邀请成员失败');
+      toast.error(e instanceof Error ? e.message : '添加成员失败');
     }
   };
 

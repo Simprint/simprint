@@ -4,17 +4,12 @@ import {
   Workflow,
   TerminalSquare,
   ShieldHalf,
-  SquarePlus,
-  Layout,
-  Monitor,
   FolderTree,
   ChevronLeft,
   ChevronRight,
   Puzzle,
   Users,
   UserCircle,
-  CreditCard,
-  Gift,
 } from 'lucide-react';
 import { TfiWorld } from "react-icons/tfi";
 import { BsWindowSidebar } from "react-icons/bs";
@@ -26,7 +21,6 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTranslation } from 'react-i18next';
-import { FreeQuotaUsage } from './free-quota-usage';
 import { getGeneralSettings, useMihomoRuntimeStore } from '../../../../services/store/src';
 import { ClashIcon } from '../../../../pages/proxy-center/src/mihomo/clash-icon';
 import { MihomoConnectDialog } from '../../../../pages/proxy-center/src/mihomo/mihomo-connect-dialog';
@@ -488,14 +482,12 @@ interface BottomNavItemsProps {
 
 /**
  * 底部导航项组件
- * 包含指纹审计、费用中心、推广计划
+ * 底部保留本地审计入口。
  */
 const BottomNavItems: React.FC<BottomNavItemsProps> = ({ collapsed, currentPath }) => {
   const { t } = useTranslation('appLayout');
   const bottomNavItems: NavItemData[] = [
     { label: t('nav.item.audit'), href: '/audit', icon: ShieldHalf },
-    { label: t('quota.billingCenter'), href: '/billing', icon: CreditCard },
-    { label: t('quota.referralProgram'), href: '/referral', icon: Gift },
   ];
 
   return (
@@ -696,7 +688,6 @@ export const AppSidebar: React.FC = () => {
 
         {/* 免费额度使用情况区域 */}
         <div className="shrink-0">
-          <FreeQuotaUsage collapsed={collapsed} currentPath={location.pathname} />
         </div>
 
         {/* 折叠按钮区域 */}

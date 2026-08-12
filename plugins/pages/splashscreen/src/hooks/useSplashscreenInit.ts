@@ -12,7 +12,7 @@ export function useSplashscreenInit() {
         const appState = (await invoke('get_app_state')) as { is_initialized?: boolean };
 
         if (appState?.is_initialized) {
-          await invoke('complete_and_show_main');
+          await invoke('show_main_window');
         }
       } catch (error) {
         console.error('[SplashscreenInit] Initialization failed:', error);

@@ -28,14 +28,31 @@ async fn current_team(context: &SvcCtx) -> Result<Uuid, String> {
 
 /// Dispatch a migrated business POST route locally.
 ///
-/// `None` means the route belongs to a non-migrated concern (authentication,
-/// updates or optional cloud services) and may be handled by the remote client.
+/// `None` means the route does not belong to the embedded business service.
 pub async fn dispatch_post(
     context: &SvcCtx,
     route: &str,
     data: &Value,
 ) -> Option<Result<Value, String>> {
     let result = match route.trim_start_matches('/') {
+        "browser-kernels/list" => {
+            async {
+                let platform = data.get("platform").and_then(Value::as_str).unwrap_or("windows");
+                let type_code = data
+                    .get("type_code")
+                    .and_then(Value::as_str)
+                    .unwrap_or("SIMPRINT_KERNEL_CHROMIUM");
+                value(
+                    services::browser_kernels::list_browser_kernels(
+                        &context.db,
+                        Some(platform),
+                        Some(type_code),
+                    )
+                    .await?,
+                )
+            }
+            .await
+        }
         "local-api/get" => {
             async {
                 value(
@@ -159,13 +176,9 @@ pub async fn dispatch_post(
 
         "teams/my-teams" => {
             async {
-                let workspace_uuid = current_workspace(context).await?;
-                let teams = services::teams::get_user_teams_service(
-                    context,
-                    workspace_uuid,
-                    context.local_user_uuid,
-                )
-                .await?;
+                let teams =
+                    services::teams::get_user_teams_service(context, context.local_user_uuid)
+                        .await?;
                 let current =
                     services::teams::get_current_team_service(context, context.local_user_uuid)
                         .await?;
@@ -176,7 +189,7 @@ pub async fn dispatch_post(
                     } else {
                         models::teams::fetch_team_member(
                             &context.db,
-                            workspace_uuid,
+                            team.workspace_uuid,
                             team.uuid,
                             context.local_user_uuid,
                         )
@@ -234,13 +247,8 @@ pub async fn dispatch_post(
         "teams/switch" => {
             async {
                 let request: SwitchTeamRequest = payload(data)?;
-                services::teams::switch_team_service(
-                    context,
-                    current_workspace(context).await?,
-                    context.local_user_uuid,
-                    &request,
-                )
-                .await?;
+                services::teams::switch_team_service(context, context.local_user_uuid, &request)
+                    .await?;
                 Ok(Value::Null)
             }
             .await
@@ -277,10 +285,10 @@ pub async fn dispatch_post(
             }
             .await
         }
-        "teams/invite" => {
+        "teams/member/add" => {
             async {
-                let request: InviteMemberRequest = payload(data)?;
-                let invitation_uuid = services::teams::invite_member_service(
+                let request: AddMemberRequest = payload(data)?;
+                let member_uuid = services::teams::add_member_service(
                     context,
                     current_workspace(context).await?,
                     current_team(context).await?,
@@ -288,7 +296,7 @@ pub async fn dispatch_post(
                     &request,
                 )
                 .await?;
-                Ok(json!({ "invitation_uuid": invitation_uuid }))
+                Ok(json!({ "member_uuid": member_uuid }))
             }
             .await
         }
@@ -317,53 +325,6 @@ pub async fn dispatch_post(
                     current_team(context).await?,
                     context.local_user_uuid,
                     request.member_uuid,
-                )
-                .await?;
-                Ok(Value::Null)
-            }
-            .await
-        }
-        "teams/invitations" => {
-            async {
-                value(
-                    services::teams::get_pending_invitations_service(
-                        context,
-                        current_team(context).await?,
-                    )
-                    .await?,
-                )
-            }
-            .await
-        }
-        "teams/invitation/cancel" => {
-            async {
-                let request: CancelInviteRequest = payload(data)?;
-                services::teams::cancel_invitation_service(context, request.invitation_uuid)
-                    .await?;
-                Ok(Value::Null)
-            }
-            .await
-        }
-        "teams/invitation/accept" => {
-            async {
-                let request: AcceptInvitationRequest = payload(data)?;
-                let team_uuid = services::teams::accept_invitation_service(
-                    context,
-                    context.local_user_uuid,
-                    &request.token,
-                )
-                .await?;
-                Ok(json!({ "team_uuid": team_uuid }))
-            }
-            .await
-        }
-        "teams/invitation/reject" => {
-            async {
-                let request: RejectInvitationRequest = payload(data)?;
-                services::teams::reject_invitation_service(
-                    context,
-                    context.local_user_uuid,
-                    &request.token,
                 )
                 .await?;
                 Ok(Value::Null)
@@ -1525,6 +1486,22 @@ mod tests {
             .expect("route should be local")
             .expect("workspace list should succeed");
         assert_eq!(workspace_list["workspaces"].as_array().unwrap().len(), 1);
+
+        let kernels = dispatch_post(
+            &context,
+            "browser-kernels/list",
+            &json!({
+                "platform": "windows",
+                "type_code": "SIMPRINT_KERNEL_CHROMIUM"
+            }),
+        )
+        .await
+        .unwrap()
+        .expect("browser kernels should be queried from the local registry");
+        assert_eq!(
+            kernels["SIMPRINT_KERNEL_CHROMIUM"][0]["kernel_id"].as_str().map(str::len),
+            Some(64)
+        );
 
         let group = dispatch_post(
             &context,

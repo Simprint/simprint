@@ -7,7 +7,7 @@ mod loader;
 mod types;
 mod validator;
 
-pub use types::{AppConfig, ServerConfig, UpdaterConfig};
+pub use types::{AppConfig, UpdaterConfig};
 
 use crate::core::error::{Error, Result};
 use std::{fs, path::PathBuf, sync::OnceLock};

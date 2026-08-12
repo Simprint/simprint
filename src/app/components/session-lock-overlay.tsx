@@ -35,7 +35,8 @@ export const SessionLockOverlay: React.FC<SessionLockOverlayProps> = ({
     return null;
   }
 
-  const displayName = user?.nickname || user?.email || t('sessionLock.defaultUser');
+  const displayName = user?.nickname || t('sessionLock.defaultUser');
+  const hasPassword = user?.has_password ?? false;
 
   const handleUnlock = async () => {
     await onUnlock(password);
@@ -59,7 +60,13 @@ export const SessionLockOverlay: React.FC<SessionLockOverlayProps> = ({
           <div className="flex flex-col items-center text-center">
             <button
               type="button"
-              onClick={() => setShowUnlockForm(true)}
+              onClick={() => {
+                if (hasPassword) {
+                  setShowUnlockForm(true);
+                } else {
+                  void onUnlock('');
+                }
+              }}
               className={cn(
                 'flex items-center justify-center rounded-full text-primary transition-colors hover:bg-primary/10',
                 showUnlockForm ? 'h-14 w-14' : 'h-24 w-24'

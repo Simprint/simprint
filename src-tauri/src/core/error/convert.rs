@@ -4,25 +4,6 @@
 
 use super::Error;
 
-/// 从基础设施层的网络错误转换
-impl From<crate::infrastructure::main_server::error::ResponseError> for Error {
-    fn from(err: crate::infrastructure::main_server::error::ResponseError) -> Self {
-        use crate::infrastructure::main_server::error::ResponseError;
-        match err {
-            ResponseError::Unauthorized { .. } => Self::AuthTokenInvalid,
-            ResponseError::PublicKeyExpired => Self::PublicKeyParseFailed,
-            ResponseError::BadRequest { .. } => Self::NetworkRequestFailed,
-            ResponseError::UnprocessableEntity { .. } => Self::NetworkRequestFailed,
-            ResponseError::EmptyResponse { .. } => Self::NetworkRequestFailed,
-            ResponseError::JsonParseError { .. } => Self::DeserializeFailed,
-            ResponseError::ReadResponseFailed(_) => Self::NetworkRequestFailed,
-            ResponseError::ParseEncryptedDataFailed(_) => Self::DecryptFailed,
-            ResponseError::DecryptFailed(_) => Self::DecryptFailed,
-            ResponseError::ParseResponseFailed(_) => Self::DeserializeFailed,
-        }
-    }
-}
-
 /// 从 anyhow::Error 转换（兜底转换）
 impl From<anyhow::Error> for Error {
     fn from(_err: anyhow::Error) -> Self {

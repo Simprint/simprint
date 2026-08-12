@@ -65,9 +65,11 @@ interface WindowInfoFormProps {
  */
 function getCurrentKernelVersion(
   kernelVersions: BrowserKernelVersion[],
-  currentKernel: string
+  currentKernelIdOrName: string
 ): string | undefined {
-  const kernel = kernelVersions.find((v) => v.resource_name === currentKernel);
+  const kernel = kernelVersions.find(
+    (v) => v.kernel_id === currentKernelIdOrName || v.resource_name === currentKernelIdOrName
+  );
   if (!kernel) {
     return undefined;
   }
@@ -132,7 +134,9 @@ export function WindowInfoForm({ value, onChange }: WindowInfoFormProps) {
         setKernelVersions(versions);
         // 首次加载且 kernel 不在列表中时，设为第一个版本
         if (versions.length > 0) {
-          const currentInList = versions.some((v) => v.resource_name === value.kernel);
+          const currentInList = versions.some(
+            (v) => v.kernel_id === value.kernelId || (!value.kernelId && v.resource_name === value.kernel)
+          );
           const needDefault =
             !hasSetDefaultKernel.current[platform] &&
             (!currentInList || value.kernel === 'Chrome');
@@ -141,7 +145,12 @@ export function WindowInfoForm({ value, onChange }: WindowInfoFormProps) {
             const firstResourceName = versions[0].resource_name;
             const kernelVersion = versions[0].version;
             const newUA = generateUserAgentByKernel(value.system, 'Chrome', kernelVersion);
-            onChange({ ...value, kernel: firstResourceName, userAgent: newUA });
+            onChange({
+              ...value,
+              kernel: firstResourceName,
+              kernelId: versions[0].kernel_id,
+              userAgent: newUA,
+            });
           }
         }
       })
@@ -157,10 +166,17 @@ export function WindowInfoForm({ value, onChange }: WindowInfoFormProps) {
     toast.info(t('windowInfo.firefoxNotSupported'));
   };
 
-  const handleKernelVersionChange = (resourceName: string) => {
-    const kernelVersion = getCurrentKernelVersion(kernelVersions, resourceName);
+  const handleKernelVersionChange = (kernelId: string) => {
+    const selected = kernelVersions.find((kernel) => kernel.kernel_id === kernelId);
+    if (!selected) return;
+    const kernelVersion = getCurrentKernelVersion(kernelVersions, kernelId);
     const newUA = generateUserAgentByKernel(value.system, 'Chrome', kernelVersion);
-    onChange({ ...value, kernel: resourceName, userAgent: newUA });
+    onChange({
+      ...value,
+      kernel: selected.resource_name,
+      kernelId: selected.kernel_id,
+      userAgent: newUA,
+    });
   };
 
   // 加载账号列表（用于显示）
@@ -247,7 +263,10 @@ export function WindowInfoForm({ value, onChange }: WindowInfoFormProps) {
                   key={option.value}
                   type="button"
                   onClick={() => {
-                    const kernelVersion = getCurrentKernelVersion(kernelVersions, value.kernel);
+                    const kernelVersion = getCurrentKernelVersion(
+                      kernelVersions,
+                      value.kernelId || value.kernel
+                    );
                     const newUA = generateUserAgentByKernel(option.value, 'Chrome', kernelVersion);
                     onChange({ ...value, system: option.value, userAgent: newUA });
                   }}
@@ -304,9 +323,11 @@ export function WindowInfoForm({ value, onChange }: WindowInfoFormProps) {
             </Tooltip>
             <Select
               value={
-                kernelVersions.some((v) => v.resource_name === value.kernel)
-                  ? value.kernel
-                  : kernelVersions[0]?.resource_name ?? ''
+                kernelVersions.some((v) => v.kernel_id === value.kernelId)
+                  ? value.kernelId
+                  : kernelVersions.find((v) => v.resource_name === value.kernel)?.kernel_id ||
+                    kernelVersions[0]?.kernel_id ||
+                    ''
               }
               onValueChange={handleKernelVersionChange}
               disabled={kernelLoading || kernelVersions.length === 0}
@@ -320,7 +341,7 @@ export function WindowInfoForm({ value, onChange }: WindowInfoFormProps) {
               </SelectTrigger>
               <SelectContent>
                 {kernelVersions.map((v) => (
-                  <SelectItem key={v.id} value={v.resource_name}>
+                  <SelectItem key={v.kernel_id} value={v.kernel_id}>
                     {v.resource_name}
                   </SelectItem>
                 ))}
@@ -369,7 +390,10 @@ export function WindowInfoForm({ value, onChange }: WindowInfoFormProps) {
             className="h-9 w-9 shrink-0"
             onClick={() => {
               const uaKernel = kernelType === KERNEL_TYPE_CHROME ? 'Chrome' : 'Firefox';
-              const kernelVersion = getCurrentKernelVersion(kernelVersions, value.kernel);
+              const kernelVersion = getCurrentKernelVersion(
+                kernelVersions,
+                value.kernelId || value.kernel
+              );
               const newUA = generateUserAgentByKernel(value.system, uaKernel, kernelVersion);
               onChange({ ...value, userAgent: newUA });
             }}

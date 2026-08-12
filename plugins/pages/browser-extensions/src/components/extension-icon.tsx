@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Package, Puzzle } from 'lucide-react';
+import { Puzzle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { resolveExtensionIconSrc } from '../utils/icon';
 
 interface ExtensionIconProps {
   icon?: string | null;
-  source?: 'remote' | 'local';
+  source?: 'local';
   containerClassName?: string;
   imageClassName?: string;
   textClassName?: string;
@@ -24,7 +24,7 @@ function isLikelyIconText(icon: string): boolean {
 
 export function ExtensionIcon({
   icon,
-  source = 'remote',
+  source = 'local',
   containerClassName,
   imageClassName,
   textClassName,
@@ -40,8 +40,6 @@ export function ExtensionIcon({
     }
     return resolvedIconSrc;
   }, [failedIconSrc, resolvedIconSrc]);
-
-  const FallbackIcon = source === 'local' ? Puzzle : Package;
 
   return (
     <div
@@ -60,12 +58,7 @@ export function ExtensionIcon({
       ) : icon && allowTextFallback && isLikelyIconText(icon) ? (
         <span className={cn('text-2xl leading-none', textClassName)}>{icon}</span>
       ) : (
-        <FallbackIcon
-          className={cn(
-            source === 'local' ? 'text-sky-600/70' : 'text-muted-foreground/60',
-            fallbackClassName
-          )}
-        />
+        <Puzzle className={cn('text-sky-600/70', fallbackClassName)} />
       )}
     </div>
   );

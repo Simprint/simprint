@@ -1,4 +1,4 @@
-﻿use uuid::Uuid;
+use uuid::Uuid;
 
 use crate::dto::{RpaTaskDto, RpaTaskStepDto};
 use crate::entitys::{
@@ -33,17 +33,16 @@ pub async fn get_rpa_tasks_service(
     .await
     .map_err(|e| e.to_string())?;
 
-    let total =
-        models::rpa::fetch_rpa_tasks_count(
-            &svc_ctx.db,
-            team_uuid,
-            user_uuid,
-            keyword,
-            status,
-            trigger_type,
-        )
-        .await
-        .map_err(|e| e.to_string())?;
+    let total = models::rpa::fetch_rpa_tasks_count(
+        &svc_ctx.db,
+        team_uuid,
+        user_uuid,
+        keyword,
+        status,
+        trigger_type,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
 
     Ok((tasks, total))
 }
@@ -246,10 +245,7 @@ pub async fn duplicate_rpa_task_service(
     // Load source task data.
     let (task, steps, environment_uuids) = get_rpa_task_service(svc_ctx, payload.uuid).await?;
 
-    let new_name = payload
-        .new_name
-        .clone()
-        .unwrap_or_else(|| format!("{} (copy)", task.name));
+    let new_name = payload.new_name.clone().unwrap_or_else(|| format!("{} (copy)", task.name));
 
     // Create duplicated task row.
     let new_task_uuid = models::rpa::insert_rpa_task(
@@ -349,6 +345,3 @@ pub async fn export_rpa_task_service(
 
     Ok((content, filename))
 }
-
-
-

@@ -92,7 +92,7 @@ export async function startAnonymousRpaEnvironment(
 
   const exePath = await invoke<string>('ensure_kernel_ready', {
     envUuid: anonymousEnvUuid,
-    kernelValue: kernelDetail.resource_name,
+    kernelValue: kernelDetail.kernel_id,
     profilesPath: effectiveProfiles,
     kernelDetail: {
       url: kernelDetail.url,

@@ -13,13 +13,13 @@ const AuthorizationLayoutPlugin: React.FC = () => {
       <AuthorizationTitlebar />
 
       {/* 内容区域 */}
-      <div className="flex flex-1 overflow-hidden min-h-0">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* 左侧品牌区域 */}
-        <div className="flex-[0_0_60%] bg-secondary flex flex-col justify-end items-start p-[40px_60px] relative overflow-hidden border-r border-border before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:bottom-0 before:bg-[linear-gradient(rgba(0,0,0,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.02)_1px,transparent_1px)] before:bg-size-[24px_24px] before:opacity-50 before:pointer-events-none before:z-1 lg:flex-[0_0_55%] lg:p-[60px_50px] md:flex-[0_0_auto] md:w-full md:p-[40px_30px] md:border-r-0 md:border-b">
+        <div className="relative hidden flex-col items-start justify-end overflow-hidden border-r border-border bg-secondary before:pointer-events-none before:absolute before:inset-0 before:z-1 before:bg-[linear-gradient(rgba(0,0,0,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.02)_1px,transparent_1px)] before:bg-size-[24px_24px] before:opacity-50 lg:flex lg:flex-[0_0_55%] lg:p-[60px_50px] xl:p-[40px_60px]">
           <DecorativeCanvas />
           <div className="relative z-2 w-full max-w-[700px] h-auto flex flex-col justify-end items-start">
             <div className="text-left mb-0">
-              <div className="text-[64px] font-semibold mb-2 tracking-[-1px] text-foreground leading-none md:text-[48px]">
+              <div className="mb-2 text-[48px] font-semibold leading-none tracking-[-1px] text-foreground xl:text-[64px]">
                 Simprint
               </div>
             </div>
@@ -35,7 +35,7 @@ const AuthorizationLayoutPlugin: React.FC = () => {
         </div>
 
         {/* 右侧表单区域 */}
-        <div className="flex-[0_0_40%] bg-background flex flex-col justify-center items-center p-[60px_40px] overflow-y-auto relative lg:flex-[0_0_45%] md:flex-1 md:p-[40px_30px]">
+        <div className="relative flex min-w-0 flex-1 flex-col items-center justify-center overflow-y-auto bg-background px-6 py-8 sm:px-10 lg:flex-[0_0_45%] lg:p-[60px_40px]">
           <div className="w-full max-w-[400px] [&_h1]:text-[28px] [&_h1]:font-medium! [&_h1]:leading-[1.3] [&_h1]:tracking-[-0.3px] [&_h1]:text-foreground [&_p]:text-sm [&_p]:font-normal [&_p]:leading-normal [&_p]:text-muted-foreground [&_label]:text-sm [&_label]:font-normal [&_label]:leading-normal [&_label]:text-foreground [&_input]:text-sm [&_input]:font-normal [&_input]:leading-normal [&_input]:text-foreground [&_button]:text-sm [&_button]:font-normal [&_button]:leading-normal [&_.text-sm]:text-[13px] [&_.text-sm]:font-normal [&_.text-sm]:leading-normal [&_.text-destructive]:text-[13px] [&_.text-destructive]:font-normal [&_.text-destructive]:leading-normal **:font-normal!">
             <Outlet />
           </div>

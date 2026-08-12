@@ -82,9 +82,8 @@ impl EnvironmentLaunchRuntimeService {
     ) -> Result<Vec<BatchLaunchResult>> {
         let app = get_app_handle()?;
         let requests = try_join_all(env_uuids.into_iter().map(|env_uuid| {
-            let display_id = display_ids_by_env_uuid
-                .as_ref()
-                .and_then(|items| items.get(&env_uuid).cloned());
+            let display_id =
+                display_ids_by_env_uuid.as_ref().and_then(|items| items.get(&env_uuid).cloned());
             Self::build_launch_request(
                 app.clone(),
                 env_uuid,
@@ -156,7 +155,12 @@ fn resolve_environment_proxy_config(
 
 fn resolve_local_proxy_config(app: &AppHandle, env_uuid: &str) -> LocalProxyResolution {
     let bindings = tauri_store::get_store_key(app, ENVIRONMENT_LOCAL_PROXY_BINDINGS_STORE_KEY)
-        .and_then(|value| serde_json::from_value::<std::collections::HashMap<String, EnvironmentLocalProxyBinding>>(value).ok())
+        .and_then(|value| {
+            serde_json::from_value::<
+                    std::collections::HashMap<String, EnvironmentLocalProxyBinding>,
+                >(value)
+                .ok()
+        })
         .unwrap_or_default();
 
     let Some(binding) = bindings.get(env_uuid) else {

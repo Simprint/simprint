@@ -4,7 +4,7 @@
 import { post, isSuccess } from '@/lib/request';
 import type {
   ListTeamMembersRequest,
-  InviteMemberRequest,
+  AddMemberRequest,
   UpdateMemberRoleRequest,
   RemoveMemberRequest,
   BatchRemoveMembersRequest,
@@ -12,17 +12,12 @@ import type {
   GetTeamRequest,
   CreateTeamRequest,
   UpdateTeamRequest,
-  CancelInviteRequest,
-  AcceptInvitationRequest,
-  RejectInvitationRequest,
   InviteResponse,
   TeamMemberListResponse,
   TeamMemberDto,
   TeamDto,
   TeamListResponse,
-  TeamInvitationDto,
   CreateResponse,
-  AcceptInvitationResponse,
   TeamMember,
 } from './index.types';
 
@@ -33,7 +28,7 @@ export * from './index.types';
 export const API_ENDPOINTS = {
   // 团队成员
   LIST_TEAM_MEMBERS: 'teams/members',
-  INVITE_MEMBER: 'teams/invite',
+  ADD_MEMBER: 'teams/member/add',
   UPDATE_MEMBER_ROLE: 'teams/member/role',
   REMOVE_MEMBER: 'teams/member/remove',
 
@@ -45,11 +40,6 @@ export const API_ENDPOINTS = {
   SWITCH_TEAM: 'teams/switch',
   LEAVE_TEAM: 'teams/leave',
 
-  // 邀请管理
-  GET_PENDING_INVITATIONS: 'teams/invitations',
-  CANCEL_INVITATION: 'teams/invitation/cancel',
-  ACCEPT_INVITATION: 'teams/invitation/accept',
-  REJECT_INVITATION: 'teams/invitation/reject',
 } as const;
 
 // ============ 数据转换 ============
@@ -63,7 +53,6 @@ function transformTeamMemberDto(dto: TeamMemberDto): TeamMember {
   return {
     id: memberId,
     name: dto.name || '',
-    email: dto.email || '',
     avatar: dto.avatar,
     role: (dto.role as TeamMember['role']) || 'viewer',
     status: (dto.status as TeamMember['status']) || 'active',
@@ -109,8 +98,8 @@ export async function listTeamMembers(
 /**
  * 邀请成员
  */
-export async function inviteMember(request: InviteMemberRequest): Promise<InviteResponse> {
-  const result = await post<InviteResponse>(API_ENDPOINTS.INVITE_MEMBER, request);
+export async function addMember(request: AddMemberRequest): Promise<InviteResponse> {
+  const result = await post<InviteResponse>(API_ENDPOINTS.ADD_MEMBER, request);
   if (!isSuccess(result)) {
     throw new Error(result.message || '邀请成员失败');
   }
@@ -211,49 +200,5 @@ export async function leaveTeam(): Promise<void> {
   const result = await post(API_ENDPOINTS.LEAVE_TEAM, {});
   if (!isSuccess(result)) {
     throw new Error(result.message || '退出团队失败');
-  }
-}
-
-// ============ 邀请管理 API ============
-
-/**
- * 获取待处理的邀请列表
- */
-export async function getPendingInvitations(): Promise<TeamInvitationDto[]> {
-  const result = await post<TeamInvitationDto[]>(API_ENDPOINTS.GET_PENDING_INVITATIONS, {});
-  if (!isSuccess(result)) {
-    throw new Error(result.message || '获取邀请列表失败');
-  }
-  return result.data! || [];
-}
-
-/**
- * 取消邀请
- */
-export async function cancelInvitation(request: CancelInviteRequest): Promise<void> {
-  const result = await post(API_ENDPOINTS.CANCEL_INVITATION, request);
-  if (!isSuccess(result)) {
-    throw new Error(result.message || '取消邀请失败');
-  }
-}
-
-/**
- * 接受邀请
- */
-export async function acceptInvitation(request: AcceptInvitationRequest): Promise<string> {
-  const result = await post<AcceptInvitationResponse>(API_ENDPOINTS.ACCEPT_INVITATION, request);
-  if (!isSuccess(result)) {
-    throw new Error(result.message || '接受邀请失败');
-  }
-  return result.data!.team_uuid;
-}
-
-/**
- * 拒绝邀请
- */
-export async function rejectInvitation(request: RejectInvitationRequest): Promise<void> {
-  const result = await post(API_ENDPOINTS.REJECT_INVITATION, request);
-  if (!isSuccess(result)) {
-    throw new Error(result.message || '拒绝邀请失败');
   }
 }

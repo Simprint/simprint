@@ -18,13 +18,13 @@ export interface ListTeamMembersRequest {
   };
 }
 
-export interface InviteMemberRequest {
-  email: string;
+export interface AddMemberRequest {
+  user_uuid: string;
   role: string;
 }
 
 export interface InviteResponse {
-  invitation_uuid: string;
+  member_uuid: string;
 }
 
 export interface UpdateMemberRoleRequest {
@@ -61,22 +61,10 @@ export interface UpdateTeamRequest {
   avatar_hash?: string;
 }
 
-export interface CancelInviteRequest {
-  invitation_uuid: string;
-}
-
-export interface AcceptInvitationRequest {
-  token: string;
-}
-
-export interface RejectInvitationRequest {
-  token: string;
-}
-
 // ============ 响应类型 ============
 
 export interface TeamMemberListResponse {
-  items: TeamMemberDto[];
+  items: TeamMember[];
   total: number;
   page: number;
   page_size: number;
@@ -132,25 +120,6 @@ export interface TeamListResponse {
   teams: TeamItem[];
 }
 
-export interface TeamInvitationDto {
-  id: number;
-  uuid: string;
-  team_uuid: string;
-  email: string;
-  role: string;
-  invited_by: string;
-  token: string;
-  expires_at: string;
-  status: string;
-  accepted_at?: string;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface CreateResponse {
   uuid: string;
-}
-
-export interface AcceptInvitationResponse {
-  team_uuid: string;
 }

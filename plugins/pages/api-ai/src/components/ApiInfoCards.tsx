@@ -12,13 +12,6 @@ export function ApiInfoCards() {
         <p className="text-xs text-muted-foreground leading-relaxed mb-2">
           {t('cards.rateLimitDesc')}
         </p>
-        <a
-          href="/billing"
-          className="text-xs text-primary hover:underline inline-flex items-center gap-1"
-        >
-          {t('cards.upgrade')}
-          <ExternalLink className="w-3 h-3" />
-        </a>
       </div>
 
       {/* API文档 */}

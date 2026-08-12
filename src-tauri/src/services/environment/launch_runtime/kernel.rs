@@ -1,16 +1,14 @@
-use std::collections::HashMap;
-
-use serde_json::{Value, json};
-use tauri::AppHandle;
+use serde_json::Value;
+use tauri::{AppHandle, Manager};
+use uuid::Uuid;
 
 use crate::{
-    app::context::AppContext,
     core::error::Result,
     domain::environment::KernelDetail,
     services::environment::{KernelService, KernelStatusEmitter},
 };
 
-use super::types::{BrowserKernelVersion, EnvironmentLaunchDetail, SIMPRINT_KERNEL_CHROMIUM};
+use super::types::EnvironmentLaunchDetail;
 
 pub(super) struct ResolvedKernelLaunch {
     pub exe_path: String,
@@ -26,45 +24,35 @@ pub(super) async fn resolve_kernel_launch(
         .environment
         .as_ref()
         .ok_or("Environment detail is missing environment uuid.")?;
-    let window_info = get_window_info(detail.config.as_ref());
-
-    let kernel_value = window_info
-        .get("kernel")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .ok_or("This environment has no browser kernel configured yet.")?
-        .to_string();
-
-    let kernels_map = list_browser_kernels(host_platform()).await?;
-    let kernel_detail = kernels_map
-        .get(SIMPRINT_KERNEL_CHROMIUM)
-        .and_then(|list| list.iter().find(|kernel| kernel.resource_name == kernel_value))
-        .cloned()
-        .ok_or_else(|| format!("No browser kernel matched \"{}\".", kernel_value))?;
+    let environment_uuid = Uuid::parse_str(&env.uuid)
+        .map_err(|error| format!("Invalid environment uuid {}: {error}", env.uuid))?;
+    let context = app.state::<business::svc_ctx::SvcCtx>();
+    let kernel_detail =
+        business::services::browser_kernels::get_environment_kernel(&context.db, environment_uuid)
+            .await?
+            .ok_or("This environment has no browser kernel binding.")?;
+    let kernel_id = kernel_detail.kernel_id.clone();
+    let install_dir_name = kernel_detail.install_dir_name.clone();
 
     let url = kernel_detail
         .url
         .filter(|value| !value.trim().is_empty())
         .ok_or("The selected browser kernel is missing download metadata.")?;
-    let hash = kernel_detail
-        .hash
-        .filter(|value| !value.trim().is_empty())
-        .ok_or("The selected browser kernel is missing download metadata.")?;
-    let signature = kernel_detail
-        .signature
-        .filter(|value| !value.trim().is_empty())
-        .ok_or("The selected browser kernel is missing signature metadata.")?;
+    let hash = kernel_detail.hash;
+    let signature = kernel_detail.signature;
+    let compatible_signatures = kernel_detail.compatible_signatures.0;
 
-    let exe_path = KernelService::ensure_kernel_ready(
+    let exe_path = KernelService::ensure_kernel_ready_for_artifact(
         app,
         Some(env.uuid.clone()),
-        kernel_value,
+        kernel_id,
+        install_dir_name,
         profiles_path.to_string(),
         KernelDetail {
             url,
             hash,
             signature: Some(signature),
+            compatible_signatures,
             requires_extract: kernel_detail.requires_extract,
         },
         status_emitter,
@@ -80,45 +68,4 @@ pub(super) fn get_window_info(config: Option<&Value>) -> serde_json::Map<String,
         .and_then(Value::as_object)
         .cloned()
         .unwrap_or_default()
-}
-
-async fn list_browser_kernels(
-    platform: &str,
-) -> Result<HashMap<String, Vec<BrowserKernelVersion>>> {
-    let ctx = AppContext::get();
-    let response = ctx
-        .main_server_client
-        .post(
-            "browser-kernels/list",
-            &json!({
-                "platform": platform,
-                "type_code": SIMPRINT_KERNEL_CHROMIUM,
-            }),
-        )
-        .await?;
-
-    let data = response.data.ok_or("获取浏览器内核失败")?;
-    serde_json::from_value(data).map_err(Into::into)
-}
-
-fn host_platform() -> &'static str {
-    #[cfg(target_os = "windows")]
-    {
-        "windows"
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        "darwin"
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        "linux"
-    }
-
-    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-    {
-        "windows"
-    }
 }

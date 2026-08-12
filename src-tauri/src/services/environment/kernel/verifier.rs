@@ -11,17 +11,17 @@ use super::utils::{calculate_file_hash_head, core_dll_name, emit_status, extract
 /// 校验内核完整性
 ///
 /// # 返回
-/// - `Ok(true)`: 校验通过
-/// - `Ok(false)`: 校验失败，需要重新下载
+/// - `Ok(Some(signature))`: 校验通过，并返回实际匹配的签名
+/// - `Ok(None)`: 校验失败
 /// - `Err`: 发生错误
 pub fn verify_kernel(
-    app: &tauri::AppHandle,
+    _app: &tauri::AppHandle,
     env_uuid: &Option<String>,
     kernel_value: &str,
     kernel_dir: &Path,
-    expected_signature: &str,
+    expected_signatures: &[String],
     status_emitter: Option<KernelStatusEmitter>,
-) -> Result<bool> {
+) -> Result<Option<String>> {
     emit_status(
         status_emitter.as_ref(),
         env_uuid,
@@ -56,7 +56,7 @@ pub fn verify_kernel(
                 kernel_dir.display(),
                 e
             );
-            return Ok(false);
+            return Ok(None);
         }
     };
 
@@ -73,15 +73,22 @@ pub fn verify_kernel(
             "未找到核心 DLL 文件: {}",
             dll_path.display()
         );
-        return Ok(false);
+        return Ok(None);
     }
 
     // 校验 signature
-    let expected = expected_signature.trim().to_lowercase();
+    let expected = expected_signatures
+        .iter()
+        .map(|signature| signature.trim().to_lowercase())
+        .filter(|signature| !signature.is_empty())
+        .collect::<Vec<_>>();
+    if expected.is_empty() {
+        return Err("该内核版本缺少 signature，无法校验核心 DLL".into());
+    }
     crate::log_info!(
         crate::core::logger::modules::KERNEL,
-        "开始计算 DLL 哈希，期望值: {}",
-        expected
+        "开始计算 DLL 哈希，可接受值: {}",
+        expected.join(", ")
     );
 
     let local_hash = calculate_file_hash_head(&dll_path, SIGNATURE_HASH_SIZE)?;
@@ -93,14 +100,22 @@ pub fn verify_kernel(
         local
     );
 
-    if local != expected {
+    let Some(matched_index) = expected.iter().position(|signature| signature == &local) else {
         crate::log_warn!(
             crate::core::logger::modules::KERNEL,
-            "核心 DLL 哈希不一致，期望: {}, 实际: {}",
-            expected,
+            "核心 DLL 哈希不一致，可接受值: {}, 实际: {}",
+            expected.join(", "),
             local
         );
-        return Ok(false);
+        return Ok(None);
+    };
+
+    if matched_index > 0 {
+        crate::log_warn!(
+            crate::core::logger::modules::KERNEL,
+            "使用兼容签名接受已安装内核: {}",
+            local
+        );
     }
 
     crate::log_info!(
@@ -109,7 +124,7 @@ pub fn verify_kernel(
         kernel_dir.display()
     );
 
-    Ok(true)
+    Ok(Some(local))
 }
 
 /// 查找版本子目录

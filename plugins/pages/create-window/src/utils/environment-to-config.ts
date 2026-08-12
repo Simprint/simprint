@@ -47,6 +47,7 @@ export function transformEnvironmentConfigToWindowConfig(
       name: (windowInfo.name as string) || environment.name || '',
       system,
       kernel: (windowInfo.kernel as string) || 'Chrome',
+      kernelId: (windowInfo.kernel_id as string) || '',
       userAgent: (windowInfo.userAgent as string) || '',
       searchEngine: (windowInfo.searchEngine as string) || 'Google',
       proxySourceMode: 'remote',

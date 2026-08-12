@@ -3,10 +3,12 @@ mod time;
 // 新增模块
 pub mod accounts;
 pub mod audit;
+pub mod browser_kernels;
 pub mod environments;
 pub mod group_permissions;
 pub mod groups;
 pub mod local_api;
+pub mod local_users;
 pub mod messages;
 pub mod preferences;
 pub mod proxies;

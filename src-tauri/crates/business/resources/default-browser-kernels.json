@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "source_id": "simprint-builtin",
+  "kernels": [
+    {
+      "type_code": "SIMPRINT_KERNEL_CHROMIUM",
+      "resource_name": "Chrome 144",
+      "install_dir_name": "Chrome 144",
+      "version": "144.0.7559.118.1",
+      "name": "simprint-browser-144.0.7559.118.zip",
+      "notes": "Simprint Chromium kernel",
+      "platform": "windows",
+      "url": "https://pub-39307a5e69c74324855a762027cbf9bf.r2.dev/versions/144.0.7559.118.1/simprint-browser-144.0.7559.118.zip",
+      "priority": 100,
+      "hash": "c74ce58537c93e99e4099c94667a21a8e150ac4052c383bc2a095ffdb3b0e075",
+      "signature": "a864f950c2e77d18ef932f2ad3dbde63039c3b467994daab83081ce6b28c4f82",
+      "compatible_signatures": [
+        "26afa023c6637f045b6825a8e14b720a2305504b313f063bc8410bb0aef19bbf"
+      ],
+      "file_size": 184526645,
+      "is_latest": true,
+      "status": "active",
+      "arch": "x86_64",
+      "package_format": "zip",
+      "requires_extract": true,
+      "entrypoint_template": null,
+      "extract_root": null
+    }
+  ]
+}

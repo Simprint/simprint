@@ -37,8 +37,8 @@ export * from './index.types';
 
 /** 浏览器内核版本（用于启动时解析下载信息） */
 export interface BrowserKernelVersion {
-  id: number;
-  type_id: number;
+  kernel_id: string;
+  type_code: string;
   resource_name: string;
   version: string;
   name?: string;
@@ -54,6 +54,7 @@ export interface BrowserKernelVersion {
   requires_extract?: boolean;
   entrypoint_template?: string;
   extract_root?: string;
+  installed?: boolean;
 }
 
 /** 代理项 */

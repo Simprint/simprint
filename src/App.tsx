@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppLayout } from './app/components/AppLayout';
 import { pluginRegistry, pluginLoader, setPluginImportFunctions } from '@slotkitjs/core';
 
@@ -46,19 +46,29 @@ interface AppProps {
 }
 
 const App: React.FC<AppProps> = ({ mode = 'main' }) => {
+  const [pluginsReady, setPluginsReady] = useState(false);
+
   useEffect(() => {
+    let cancelled = false;
+
     loadPlugins()
       .then(() => {
         console.log('[App] Plugins loaded for mode:', mode);
+        if (!cancelled) setPluginsReady(true);
       })
       .catch((error) => {
         console.error('[ERROR] Failed to load plugins:', error);
+        if (!cancelled) setPluginsReady(true);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [mode]);
 
   return (
     <div className="app">
-      <AppLayout mode={mode} />
+      <AppLayout mode={mode} pluginsReady={pluginsReady} />
     </div>
   );
 };

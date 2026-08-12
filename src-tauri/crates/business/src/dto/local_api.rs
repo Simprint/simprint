@@ -89,6 +89,7 @@ pub struct ResetLocalApiKeyDto {
 #[serde(rename_all = "camelCase")]
 pub struct ValidateLocalApiKeyDto {
     pub valid: bool,
+    pub user_uuid: uuid::Uuid,
     pub permission_code: String,
     pub requests_today: i32,
     pub daily_limit: i32,

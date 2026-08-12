@@ -19,6 +19,11 @@ export const settingsResources = {
     // Account Panel
     accountProfile: '个人资料',
     accountSecurity: '安全设置',
+    localUser: '本地用户',
+    localAccountDesc: '资料仅保存在当前设备',
+    localPassword: '本地密码',
+    passwordProtected: '已设置密码保护',
+    passwordlessAccount: '未设置密码，可直接进入',
     clickToChangeAvatar: '点击更换头像',
     editProfile: '编辑资料',
     editProfileDesc: '修改您的个人资料信息',
@@ -226,6 +231,11 @@ export const settingsResources = {
     // Account Panel
     accountProfile: 'Profile',
     accountSecurity: 'Security',
+    localUser: 'Local User',
+    localAccountDesc: 'Profile data is stored only on this device',
+    localPassword: 'Local Password',
+    passwordProtected: 'Password protected',
+    passwordlessAccount: 'No password; direct entry enabled',
     clickToChangeAvatar: 'Click to change avatar',
     editProfile: 'Edit Profile',
     editProfileDesc: 'Update your profile information',

@@ -6,12 +6,9 @@ import {
   Loader2,
   Eye,
   Info,
-  UserPlus,
   UserMinus,
   MessageSquare,
   AlertCircle,
-  Check,
-  X,
   ChevronRight,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -34,7 +31,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 // 消息类型映射
 const MESSAGE_TYPE_MAP: Record<string, string> = {
   system_notification: 'notification.systemNotification',
-  team_invitation: 'notification.teamInvitation',
   team_removal: 'notification.teamRemoval',
   team_announcement: 'notification.teamAnnouncement',
   private_chat: 'notification.privateChat',
@@ -43,7 +39,6 @@ const MESSAGE_TYPE_MAP: Record<string, string> = {
 // 消息类型图标映射
 const MESSAGE_TYPE_ICONS: Record<string, typeof Info> = {
   system_notification: Info,
-  team_invitation: UserPlus,
   team_removal: UserMinus,
   team_announcement: MessageSquare,
   private_chat: MessageSquare,
@@ -70,7 +65,6 @@ export function NotificationMenu() {
   const loadMore = useMessagesStore((state) => state.loadMore);
   const markAsRead = useMessagesStore((state) => state.markAsRead);
   const markAllAsRead = useMessagesStore((state) => state.markAllAsRead);
-  const handleInvitation = useMessagesStore((state) => state.handleInvitation);
   const setMessageTypeFilter = useMessagesStore((state) => state.setMessageTypeFilter);
   const setIsReadFilter = useMessagesStore((state) => state.setIsReadFilter);
 
@@ -112,7 +106,6 @@ export function NotificationMenu() {
   const getMessageTypeIconColor = (type: string) => {
     const colorMap: Record<string, string> = {
       system_notification: 'text-blue-500',
-      team_invitation: 'text-green-500',
       team_removal: 'text-red-500',
       team_announcement: 'text-purple-500',
       private_chat: 'text-orange-500',
@@ -125,16 +118,6 @@ export function NotificationMenu() {
     if (!isRead) {
       await markAsRead(messageUuid);
     }
-  };
-
-  // 处理邀请按钮点击
-  const handleInvitationClick = async (
-    e: React.MouseEvent,
-    message: (typeof messages)[0],
-    action: 'accept' | 'reject'
-  ) => {
-    e.stopPropagation();
-    await handleInvitation(message, action);
   };
 
   // 获取已读状态显示文本
@@ -329,44 +312,6 @@ export function NotificationMenu() {
                           >
                             {message.content}
                           </p>
-                        )}
-
-                        {/* 团队邀请操作按钮 */}
-                        {message.message_type === 'team_invitation' && (
-                          <div className="flex items-center gap-2 pt-1.5">
-                            {message.action_status === 'accepted' ? (
-                              <div className="flex items-center gap-1.5 text-xs text-green-600">
-                                <Check className="w-3.5 h-3.5" />
-                                <span>{t('notification.invitationAccepted')}</span>
-                              </div>
-                            ) : message.action_status === 'rejected' ? (
-                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <X className="w-3.5 h-3.5" />
-                                <span>{t('notification.invitationRejected')}</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  className="h-7 text-xs px-3"
-                                  onClick={(e) => handleInvitationClick(e, message, 'accept')}
-                                >
-                                  <Check className="w-3 h-3 mr-1.5" />
-                                  {t('notification.acceptInvitation')}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 text-xs px-3"
-                                  onClick={(e) => handleInvitationClick(e, message, 'reject')}
-                                >
-                                  <X className="w-3 h-3 mr-1.5" />
-                                  {t('notification.rejectInvitation')}
-                                </Button>
-                              </div>
-                            )}
-                          </div>
                         )}
 
                         {/* 底部元信息 */}

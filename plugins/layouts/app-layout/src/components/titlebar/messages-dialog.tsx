@@ -1,13 +1,10 @@
 import { useEffect, useMemo } from 'react';
 import {
   BellOff,
-  Check,
   CheckCheck,
-  CheckCircle2,
   Inbox,
   Info,
   Loader2,
-  X,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { format, isToday, isYesterday } from 'date-fns';
@@ -49,7 +46,6 @@ export function MessagesDialog({ open, onOpenChange }: MessagesDialogProps) {
   const loadMore = useMessagesStore((state) => state.loadMore);
   const markAsRead = useMessagesStore((state) => state.markAsRead);
   const markAllAsRead = useMessagesStore((state) => state.markAllAsRead);
-  const handleInvitation = useMessagesStore((state) => state.handleInvitation);
   const setMessageTypeFilter = useMessagesStore((state) => state.setMessageTypeFilter);
   const setIsReadFilter = useMessagesStore((state) => state.setIsReadFilter);
 
@@ -114,15 +110,6 @@ export function MessagesDialog({ open, onOpenChange }: MessagesDialogProps) {
     if (!isRead) {
       await markAsRead(messageUuid);
     }
-  };
-
-  const handleInvitationClick = async (
-    e: React.MouseEvent,
-    message: (typeof messages)[0],
-    action: 'accept' | 'reject'
-  ) => {
-    e.stopPropagation();
-    await handleInvitation(message, action);
   };
 
   const handleTypeFilter = (type: string | null) => {
@@ -337,41 +324,6 @@ export function MessagesDialog({ open, onOpenChange }: MessagesDialogProps) {
                             </p>
                           ) : null}
 
-                          {message.message_type === 'team_invitation' ? (
-                            <div className="mt-3 flex items-center justify-end gap-2">
-                              {message.action_status === 'accepted' ? (
-                                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                  {t('notification.invitationAccepted')}
-                                </span>
-                              ) : message.action_status === 'rejected' ? (
-                                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                                  <X className="h-3.5 w-3.5" />
-                                  {t('notification.invitationRejected')}
-                                </span>
-                              ) : (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    className="h-8 px-3 text-xs"
-                                    onClick={(e) => void handleInvitationClick(e, message, 'accept')}
-                                  >
-                                    <Check className="mr-1.5 h-3.5 w-3.5" />
-                                    {t('notification.acceptInvitation')}
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-8 px-3 text-xs"
-                                    onClick={(e) => void handleInvitationClick(e, message, 'reject')}
-                                  >
-                                    <X className="mr-1.5 h-3.5 w-3.5" />
-                                    {t('notification.rejectInvitation')}
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          ) : null}
                         </div>
                       </div>
                     </div>

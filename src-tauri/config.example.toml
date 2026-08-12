@@ -1,8 +1,3 @@
-[server]
-base_url = "https://api.simprint.app/api/"
-version = "v1"
-secret_key = "Nuexz9Y2hRc5Z6HK7Atb"
-
 [updater]
 check_url = "https://update.simprint.app/api/v1/versions/check"
 latest_json_url = "https://pub-39307a5e69c74324855a762027cbf9bf.r2.dev/latest.json"

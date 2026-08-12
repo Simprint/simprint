@@ -235,8 +235,5 @@ fn detect_clash_verge_rev_config_dir() -> Option<PathBuf> {
 }
 
 fn resolve_mihomo_config_path(config_dir: PathBuf) -> String {
-    config_dir
-        .join(MIHOMO_CONFIG_FILE_PRIMARY)
-        .to_string_lossy()
-        .to_string()
+    config_dir.join(MIHOMO_CONFIG_FILE_PRIMARY).to_string_lossy().to_string()
 }

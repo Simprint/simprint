@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../../plugins/services/store/src';
-import { verifyCurrentUserPassword } from '../../../plugins/pages/system-settings/src/api/users';
 import { invoke, reportUserActivity } from '@/lib/tauri';
 
 interface SessionLockState {
@@ -20,6 +19,7 @@ interface SessionLockPayload {
 export function useSessionLock(enabled: boolean): SessionLockState {
   const { t } = useTranslation('settings');
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const hasPassword = useAuthStore((state) => state.user?.has_password ?? false);
   const authRef = useRef(isAuthenticated);
   const [isLocked, setIsLocked] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
@@ -113,7 +113,7 @@ export function useSessionLock(enabled: boolean): SessionLockState {
   }, [enabled, isAuthenticated]);
 
   const unlock = useCallback(async (password: string) => {
-    if (!password.trim()) {
+    if (hasPassword && !password) {
       setError(t('sessionLock.passwordRequired'));
       return;
     }
@@ -122,23 +122,17 @@ export function useSessionLock(enabled: boolean): SessionLockState {
     setError(null);
 
     try {
-      const result = await verifyCurrentUserPassword({ password });
-      if (!result.ok) {
-        setError(result.message || t('sessionLock.unlockFailed'));
-        return;
-      }
-
-      if (!result.valid) {
-        setError(t('sessionLock.invalidPassword'));
-        return;
-      }
-
+      await invoke('verify_local_user_password', {
+        password: hasPassword ? password : null,
+      });
       await invoke('unlock_session');
       setIsLocked(false);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason || t('sessionLock.invalidPassword')));
     } finally {
       setUnlocking(false);
     }
-  }, [t]);
+  }, [hasPassword, t]);
 
   return {
     isLocked,

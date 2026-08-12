@@ -4,16 +4,6 @@ use serde_json::Value;
 use crate::services::environment::{AccountInfo, ExtensionInfo};
 
 #[derive(Debug, Clone, Deserialize)]
-pub(super) struct BrowserKernelVersion {
-    pub resource_name: String,
-    pub url: Option<String>,
-    pub hash: Option<String>,
-    pub signature: Option<String>,
-    #[serde(default)]
-    pub requires_extract: bool,
-}
-
-#[derive(Debug, Clone, Deserialize)]
 pub(super) struct EnvironmentLaunchDetail {
     pub environment: Option<EnvironmentInfoLike>,
     pub config: Option<Value>,
@@ -50,8 +40,6 @@ pub(super) struct EnvironmentCookieLike {
     pub site: String,
     pub cookie_text: String,
 }
-
-pub(super) const SIMPRINT_KERNEL_CHROMIUM: &str = "SIMPRINT_KERNEL_CHROMIUM";
 
 #[derive(Debug, Clone)]
 pub struct LaunchPaths {

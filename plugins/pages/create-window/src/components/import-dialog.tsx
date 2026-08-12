@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { isSuccess, post } from '@/lib/request';
 
 interface ImportDialogProps {
   open: boolean;
@@ -31,18 +32,15 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
       const data = JSON.parse(importJson);
       setSubmitting(true);
 
-      const response = await fetch('/api/v1/environments/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ environments: Array.isArray(data) ? data : [data] }),
-      });
+      const environments = Array.isArray(data) ? data : [data];
+      const response = await post<unknown[]>('environments/batch-create', { environments });
 
-      if (!response.ok) {
-        throw new Error('导入失败');
+      if (!isSuccess(response)) {
+        throw new Error(response.message || '导入失败');
       }
 
-      const json = await response.json();
-      toast.success(`成功导入 ${json.data?.length || 0} 个窗口`);
+      const imported = Array.isArray(response.data) ? response.data.length : environments.length;
+      toast.success(`成功导入 ${imported} 个窗口`);
       setImportJson('');
       onOpenChange(false);
     } catch (error) {

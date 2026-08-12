@@ -4,17 +4,6 @@
 
 use serde::Deserialize;
 
-/// 服务器配置
-#[derive(Deserialize, Debug, Clone)]
-pub struct ServerConfig {
-    /// 服务器基础URL
-    pub base_url: String,
-    /// API版本
-    pub version: String,
-    /// 密钥
-    pub secret_key: String,
-}
-
 /// 更新器配置
 #[derive(Deserialize, Debug, Clone)]
 pub struct UpdaterConfig {
@@ -31,8 +20,6 @@ pub struct UpdaterConfig {
 /// 应用配置
 #[derive(Deserialize, Debug, Clone)]
 pub struct AppConfig {
-    /// 服务器配置
-    pub server: ServerConfig,
     /// 更新器配置
     pub updater: UpdaterConfig,
 }

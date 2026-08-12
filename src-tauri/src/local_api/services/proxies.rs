@@ -2,7 +2,7 @@ use axum::http::StatusCode;
 use serde_json::Value;
 
 use crate::local_api::{
-    client::main_server::proxy_data_value_request, context::LocalApiRequestContext,
+    client::business::dispatch_data_value_request, context::LocalApiRequestContext,
     services::forward_service, types::LocalApiRoute,
 };
 
@@ -12,7 +12,7 @@ macro_rules! proxy_service {
             ctx: &LocalApiRequestContext,
             payload: Value,
         ) -> Result<Value, (StatusCode, String)> {
-            proxy_data_value_request::<$response_ty>(
+            dispatch_data_value_request::<$response_ty>(
                 concat!("proxies", $path),
                 $permission,
                 &ctx.api_key,

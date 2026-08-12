@@ -31,36 +31,3 @@ export interface AuthActions {
   /** 设置当前团队 */
   setCurrentTeam: (teamUuid: string | null) => void;
 }
-
-/**
- * 登录响应数据结构
- */
-export interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
-  user_info?: {
-    uuid?: string;
-    id?: string;
-    nickname?: string;
-    email?: string;
-    phone?: string;
-    avatar_hash?: string;
-    status?: string;
-  };
-}
-
-/**
- * Tauri invoke 函数类型
- */
-
-export type TauriInvoke = (
-  cmd: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  args?: Record<string, any>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-) => Promise<any>;
-
-/**
- * Store setter 函数类型
- */
-export type AuthStateSetter = (state: Partial<AuthState>) => void;

@@ -47,7 +47,8 @@ export interface CookieGroup {
 export interface WindowInfo {
   name: string;
   system: string; // 操作系统
-  kernel: string; // 浏览器内核
+  kernel: string; // 浏览器内核显示名称
+  kernelId: string; // 数据库中不可变的内核制品标识
   userAgent: string;
   searchEngine: string;
   proxySourceMode: ProxySourceMode;

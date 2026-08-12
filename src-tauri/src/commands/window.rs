@@ -53,6 +53,6 @@ pub fn create_splashscreen_window(app_handle: AppHandle) -> Result<()> {
 }
 
 /// 创建主窗口（内部使用，不暴露为 Tauri 命令）
-pub async fn create_main_window(app_handle: AppHandle) -> Result<()> {
-    WindowService::create_main_window(&app_handle).await
+pub fn create_main_window(app_handle: AppHandle) -> Result<()> {
+    WindowService::create_main_window(&app_handle)
 }

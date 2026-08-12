@@ -1,6 +1,6 @@
 # Authorization Layout Plugin
 
-认证布局插件，提供登录、注册和重置密码页面的布局结构。
+认证布局插件，提供本地用户选择、密码登录和本地用户创建页面的布局结构。
 
 ## 架构说明
 
@@ -11,9 +11,8 @@
   - 右侧表单区域（40%）：使用 `<Outlet />` 渲染子路由页面
 
 - **页面插件**（`plugins/pages/`）：
-  - `login`：登录页面（路径：`/auth/login`）
-  - `register`：注册页面（路径：`/auth/register`）
-  - `reset-password`：重置密码页面（路径：`/auth/reset-password`）
+  - `login`：本地用户选择与密码登录页面（路径：`/auth/login`）
+  - `register`：本地用户创建页面（路径：`/auth/register`）
 
 ## 功能特性
 
@@ -40,9 +39,8 @@ plugins/layouts/authorization/
 
 认证相关的路由都使用 `authorization-layout` 布局：
 
-- `/auth/login` - 登录页面
-- `/auth/register` - 注册页面
-- `/auth/reset-password` - 重置密码页面
+- `/auth/login` - 本地用户选择与密码登录页面
+- `/auth/register` - 本地用户创建页面
 
 路由系统会自动识别以 `/auth` 开头的路由，并使用 `authorization-layout` 布局。
 

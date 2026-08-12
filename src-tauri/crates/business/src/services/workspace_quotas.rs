@@ -10,9 +10,8 @@ pub async fn get_workspace_quota_service(
     svc_ctx: &SvcCtx,
     payload: &GetWorkspaceQuotaRequest,
 ) -> Result<WorkspaceQuotaDto, String> {
-    let workspace_uuid = payload
-        .workspace_uuid
-        .ok_or_else(|| "工作空间 UUID 不能为空".to_string())?;
+    let workspace_uuid =
+        payload.workspace_uuid.ok_or_else(|| "工作空间 UUID 不能为空".to_string())?;
 
     models::fetch_workspace_quota(&svc_ctx.db, workspace_uuid)
         .await

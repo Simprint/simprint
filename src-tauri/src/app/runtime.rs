@@ -291,26 +291,27 @@ fn runtime_err_to_string(
 }
 
 fn current_auth_info() -> AuthInfo {
-    use crate::infrastructure::persistence::credential::{get_credential, is_login};
-
-    if !is_login() {
+    let Some(user_uuid) = crate::commands::auth::authenticated_user_uuid() else {
         return AuthInfo {
             is_authenticated: false,
             access_token: None,
             user_info: None,
         };
-    }
+    };
 
-    let credential = get_credential();
     AuthInfo {
         is_authenticated: true,
-        access_token: credential.get_access_token(),
-        user_info: None,
+        access_token: None,
+        user_info: Some(crate::infrastructure::runtime::UserInfo {
+            user_id: user_uuid.to_string(),
+            username: user_uuid.to_string(),
+            email: None,
+        }),
     }
 }
 
 fn is_runtime_authenticated() -> bool {
-    crate::infrastructure::persistence::credential::is_login()
+    crate::commands::auth::has_local_session()
 }
 
 impl Default for SimprintRuntimeManager {

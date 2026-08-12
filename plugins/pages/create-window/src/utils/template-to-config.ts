@@ -100,6 +100,7 @@ export function transformTemplateToWindowConfig(
       name: (windowInfo.name as string) || template.name || '',
       system,
       kernel: (windowInfo.kernel as string) || template.kernel_info || 'Chrome',
+      kernelId: (windowInfo.kernel_id as string) || '',
       userAgent: (windowInfo.userAgent as string) || '',
       searchEngine: (windowInfo.searchEngine as string) || 'Google',
       proxySourceMode: 'remote',

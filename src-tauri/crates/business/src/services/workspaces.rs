@@ -18,18 +18,11 @@ pub async fn create_workspace_service(
         .ok_or_else(|| "用户不存在".to_string())?;
 
     // 生成团队名称
-    let team_name = user_info
-        .nickname
-        .as_ref()
-        .map(|n| format!("{} 的团队", n))
-        .unwrap_or_else(|| {
+    let team_name =
+        user_info.nickname.as_ref().map(|n| format!("{} 的团队", n)).unwrap_or_else(|| {
             format!(
                 "{} 的团队",
-                user_info
-                    .email
-                    .split('@')
-                    .next()
-                    .unwrap_or("用户")
+                user_info.email.split('@').next().unwrap_or("用户")
             )
         });
 
@@ -62,9 +55,14 @@ pub async fn create_workspace_service(
         .map_err(|e| e.to_string())?;
 
     // 设置用户当前工作空间和团队，确保上下文始终一致。
-    models::user::set_user_current_workspace_and_team(&svc_ctx.db, user_uuid, workspace_uuid, team_uuid)
-        .await
-        .map_err(|e| e.to_string())?;
+    models::user::set_user_current_workspace_and_team(
+        &svc_ctx.db,
+        user_uuid,
+        workspace_uuid,
+        team_uuid,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
 
     Ok(workspace_uuid)
 }
@@ -178,7 +176,12 @@ pub async fn switch_workspace_service(
         .or_else(|| teams.first().map(|team| team.uuid))
         .ok_or_else(|| "该工作空间下没有可用团队".to_string())?;
 
-    models::user::set_user_current_workspace_and_team(&svc_ctx.db, user_uuid, workspace_uuid, team_uuid)
-        .await
-        .map_err(|e| e.to_string())
+    models::user::set_user_current_workspace_and_team(
+        &svc_ctx.db,
+        user_uuid,
+        workspace_uuid,
+        team_uuid,
+    )
+    .await
+    .map_err(|e| e.to_string())
 }

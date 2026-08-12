@@ -64,12 +64,10 @@ pub async fn execute_local_rpa_script(
             });
         }
 
-        return Err(
-            envelope
-                .error
-                .filter(|message| !message.trim().is_empty())
-                .unwrap_or_else(|| "LOCAL_SCRIPT_EXECUTION_FAILED".to_string()),
-        );
+        return Err(envelope
+            .error
+            .filter(|message| !message.trim().is_empty())
+            .unwrap_or_else(|| "LOCAL_SCRIPT_EXECUTION_FAILED".to_string()));
     }
 
     if !stderr.is_empty() {

@@ -2,7 +2,7 @@ use axum::http::StatusCode;
 use serde_json::Value;
 
 use crate::local_api::{
-    client::main_server::proxy_data_request, context::LocalApiRequestContext,
+    client::business::dispatch_data_request, context::LocalApiRequestContext,
     services::forward_service, types::LocalApiRoute,
 };
 
@@ -32,7 +32,7 @@ pub async fn list_groups_service(
     payload: Value,
 ) -> Result<Value, (StatusCode, String)> {
     let items =
-        proxy_data_request::<Vec<Value>>("groups/list", "groups.list", &ctx.api_key, payload)
+        dispatch_data_request::<Vec<Value>>("groups/list", "groups.list", &ctx.api_key, payload)
             .await?;
     Ok(serde_json::json!({ "items": items }))
 }

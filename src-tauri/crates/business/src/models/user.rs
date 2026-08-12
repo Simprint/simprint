@@ -118,12 +118,8 @@ pub async fn create_user_with_info(
     .await?;
 
     // 6. 初始化本地 API 权限记录
-    insert_local_api_permissions(
-        &mut tx,
-        local_api_key_id,
-        &local_api_permission_definitions,
-    )
-    .await?;
+    insert_local_api_permissions(&mut tx, local_api_key_id, &local_api_permission_definitions)
+        .await?;
 
     // 7. 创建个人团队（每个用户都应该有一个团队）
     // 团队名称使用用户昵称，如果没有昵称则使用邮箱前缀
@@ -243,7 +239,6 @@ fn generate_local_api_key() -> String {
     let raw = Uuid::new_v4().simple().to_string();
     format!("sk_local_{}", raw)
 }
-
 
 /// 根据 UUID 查询用户
 pub async fn fetch_user_by_uuid(

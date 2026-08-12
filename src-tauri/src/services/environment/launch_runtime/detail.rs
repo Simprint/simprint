@@ -1,18 +1,24 @@
 use serde_json::json;
+use tauri::Manager;
 
-use crate::{app::context::AppContext, core::error::Result};
+use crate::core::error::Result;
 
 use super::types::EnvironmentLaunchDetail;
 
 pub(super) async fn get_environment_launch_detail(
     env_uuid: &str,
 ) -> Result<EnvironmentLaunchDetail> {
-    let ctx = AppContext::get();
-    let response = ctx
-        .main_server_client
-        .post("environments/detail", &json!({ "uuid": env_uuid }))
-        .await?;
+    let app = crate::app::handle::get_app_handle()?;
+    let context = app.state::<business::svc_ctx::SvcCtx>();
+    let request_context = context.for_current_user()?;
+    let data = business::dispatcher::dispatch_post(
+        &request_context,
+        "environments/detail",
+        &json!({ "uuid": env_uuid }),
+    )
+    .await
+    .ok_or("本地环境详情路由不存在")?
+    .map_err(crate::core::error::Error::from)?;
 
-    let data = response.data.ok_or("获取环境详情失败")?;
     serde_json::from_value(data).map_err(Into::into)
 }

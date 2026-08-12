@@ -182,10 +182,7 @@ pub async fn update_platform_account(
 }
 
 /// 增加账号使用次数
-pub async fn increment_account_usage(
-    pool: &Pool<Db>,
-    account_uuid: Uuid,
-) -> Result<(), Error> {
+pub async fn increment_account_usage(pool: &Pool<Db>, account_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE platform_accounts
@@ -201,10 +198,7 @@ pub async fn increment_account_usage(
 }
 
 /// 软删除平台账号
-pub async fn delete_platform_account(
-    pool: &Pool<Db>,
-    account_uuid: Uuid,
-) -> Result<(), Error> {
+pub async fn delete_platform_account(pool: &Pool<Db>, account_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE platform_accounts SET deleted_at = CURRENT_TIMESTAMP
@@ -289,10 +283,7 @@ pub async fn remove_environment_account(
 }
 
 /// 清空环境的所有账号关联
-pub async fn clear_environment_accounts(
-    pool: &Pool<Db>,
-    env_uuid: Uuid,
-) -> Result<(), Error> {
+pub async fn clear_environment_accounts(pool: &Pool<Db>, env_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         DELETE FROM environment_accounts WHERE environment_uuid = $1;

@@ -1,6 +1,6 @@
 ﻿export interface BrowserKernelVersion {
-  id: number;
-  type_id: number;
+  kernel_id: string;
+  type_code: string;
   resource_name: string;
   version: string;
   name?: string;
@@ -16,6 +16,7 @@
   extract_root?: string;
   status?: string;
   is_latest?: boolean;
+  installed?: boolean;
 }
 
 export interface ProxyPassword {

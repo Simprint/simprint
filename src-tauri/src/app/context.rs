@@ -10,8 +10,6 @@ use tokio::sync::OnceCell;
 
 use crate::app::runtime::SimprintRuntimeManager;
 use crate::core::config::AppConfig;
-use crate::infrastructure::http::encryption::RsaSecret;
-use crate::infrastructure::main_server::client::MainServerRequestClient;
 use crate::local_api::LocalApiManager;
 use crate::mcp::McpManager;
 use crate::services::environment::{EnvironmentPositionManager, EnvironmentStatusManager};
@@ -24,17 +22,11 @@ pub struct AppContext {
     /// 应用配置（不可变）
     pub config: AppConfig,
 
-    /// RSA 密钥对（用于 HTTP 加密）
-    pub rsa_keypair: Arc<RsaSecret>,
-
     /// 环境状态管理器
     pub env_status_manager: Arc<EnvironmentStatusManager>,
 
     /// 环境位置管理器
     pub env_position_manager: Arc<EnvironmentPositionManager>,
-
-    /// 主服务器 HTTP 客户端
-    pub main_server_client: Arc<MainServerRequestClient>,
 
     /// 本地 API 服务管理器
     pub local_api_manager: Arc<LocalApiManager>,
@@ -55,29 +47,6 @@ static APP_CONTEXT: OnceCell<Arc<AppContext>> = OnceCell::const_new();
 impl AppContext {
     /// 创建新的应用上下文（早期初始化，不依赖 AppHandle）
     pub fn new(config: AppConfig) -> anyhow::Result<Self> {
-        // 初始化 RSA 密钥对
-        let rsa_keypair = Arc::new(RsaSecret::new()?);
-
-        // 初始化主服务器 HTTP 客户端并设置拦截器
-        let mut main_server_client = MainServerRequestClient::new();
-
-        // 请求拦截器
-        main_server_client.before(|rb| {
-            Box::pin(crate::infrastructure::main_server::interceptors::request::encrypt(rb))
-        });
-        main_server_client.before(|rb| {
-            Box::pin(crate::infrastructure::main_server::interceptors::request::auth(rb))
-        });
-
-        // 响应拦截器
-        main_server_client.after(|response| {
-            Box::pin(
-                crate::infrastructure::main_server::interceptors::response_interceptor(response),
-            )
-        });
-
-        let main_server_client = Arc::new(main_server_client);
-
         // 初始化环境状态管理器
         let env_status_manager = Arc::new(EnvironmentStatusManager::new());
 
@@ -98,10 +67,8 @@ impl AppContext {
 
         Ok(Self {
             config,
-            rsa_keypair,
             env_status_manager,
             env_position_manager,
-            main_server_client,
             local_api_manager,
             mcp_manager,
             mihomo_manager,

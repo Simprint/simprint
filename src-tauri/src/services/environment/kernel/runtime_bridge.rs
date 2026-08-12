@@ -199,7 +199,7 @@ pub async fn refresh_proxy(env_uuid: String, proxy: Option<ProxyConfig>) -> Resu
 }
 
 pub async fn get_connected_environments() -> Result<Vec<String>> {
-    if !crate::infrastructure::persistence::credential::is_login() {
+    if !crate::commands::auth::has_local_session() {
         return Ok(vec![]);
     }
 
@@ -215,7 +215,7 @@ pub async fn get_connected_environments() -> Result<Vec<String>> {
 }
 
 pub async fn get_cdp_endpoint(env_uuid: String) -> Result<Option<CdpEndpointResponse>> {
-    if !crate::infrastructure::persistence::credential::is_login() {
+    if !crate::commands::auth::has_local_session() {
         return Ok(None);
     }
 
@@ -297,7 +297,7 @@ pub async fn close_rpa_tab(env_uuid: String, position: u32) -> Result<RpaTabClos
 }
 
 pub async fn get_environment_status(env_uuid: String) -> Result<Option<EnvironmentStatus>> {
-    if !crate::infrastructure::persistence::credential::is_login() {
+    if !crate::commands::auth::has_local_session() {
         return Ok(None);
     }
 
@@ -313,7 +313,7 @@ pub async fn get_environment_status(env_uuid: String) -> Result<Option<Environme
 }
 
 pub async fn get_all_environment_statuses() -> Result<HashMap<String, EnvironmentStatus>> {
-    if !crate::infrastructure::persistence::credential::is_login() {
+    if !crate::commands::auth::has_local_session() {
         return Ok(HashMap::new());
     }
 

@@ -72,6 +72,9 @@ pub struct KernelDetail {
     /// 签名哈希（用于核心文件验证）
     #[serde(default)]
     pub signature: Option<String>,
+    /// 允许复用的历史安装签名；仅用于校验已经存在的内核
+    #[serde(default)]
+    pub compatible_signatures: Vec<String>,
     /// 是否需要解压
     pub requires_extract: bool,
 }
@@ -83,6 +86,7 @@ impl KernelDetail {
             url,
             hash,
             signature: None,
+            compatible_signatures: Vec::new(),
             requires_extract,
         }
     }

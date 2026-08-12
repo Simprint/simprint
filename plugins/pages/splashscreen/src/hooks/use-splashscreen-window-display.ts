@@ -25,31 +25,28 @@ export function useSplashscreenWindowDisplay(): UseSplashscreenWindowDisplayRetu
         contentRef.current.offsetWidth > 0;
 
       if (isContentReady && !hasShownWindow.current) {
-        // 内容已渲染，使用双重 RAF + setTimeout 确保浏览器完成渲染后再显示窗口
+        // 内容已渲染，使用双重 RAF 确保浏览器完成首帧布局后再显示窗口。
         hasShownWindow.current = true;
 
         requestAnimationFrame(() => {
           requestAnimationFrame(async () => {
-            // 额外的延迟确保所有样式、布局和动画都已完成
-            setTimeout(async () => {
-              try {
-                const splashWindow = getCurrentWindow();
+            try {
+              const splashWindow = getCurrentWindow();
 
-                // 检查窗口标签是否匹配
-                if (splashWindow.label.includes('splashscreen')) {
-                  await splashWindow.show();
-                  await splashWindow.setFocus();
-                  // 窗口显示后，通知后端开始加载
-                  try {
-                    await invoke('splashscreen_ready');
-                  } catch (error) {
-                    console.error('[SplashscreenWindowDisplay] 通知后端开始加载失败:', error);
-                  }
+              // 检查窗口标签是否匹配
+              if (splashWindow.label.includes('splashscreen')) {
+                await splashWindow.show();
+                await splashWindow.setFocus();
+                // 窗口显示后，通知后端开始加载
+                try {
+                  await invoke('splashscreen_ready');
+                } catch (error) {
+                  console.error('[SplashscreenWindowDisplay] 通知后端开始加载失败:', error);
                 }
-              } catch (error) {
-                console.error('[SplashscreenWindowDisplay] 显示窗口失败:', error);
               }
-            }, 150);
+            } catch (error) {
+              console.error('[SplashscreenWindowDisplay] 显示窗口失败:', error);
+            }
           });
         });
       } else if (!isContentReady) {

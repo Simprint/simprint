@@ -15,6 +15,43 @@ use crate::commands;
 use components::tray;
 use tauri::Manager;
 
+fn initialize_business_context(
+    database_config: business::utils::DatabaseConfig,
+    user_kernel_catalog: std::path::PathBuf,
+) -> anyhow::Result<business::svc_ctx::SvcCtx> {
+    // Tauri invokes `setup` from its async runtime. Blocking that same thread with
+    // `tauri::async_runtime::block_on` would try to enter Tokio recursively and panic.
+    // Keep setup synchronous, but perform the one-time async database bootstrap from
+    // a plain OS thread using Tauri's runtime handle.
+    std::thread::Builder::new()
+        .name("business-database-init".to_string())
+        .spawn(move || {
+            tauri::async_runtime::block_on(async move {
+                let context = business::svc_ctx::SvcCtx::new(&database_config).await?;
+                let imported = business::services::browser_kernels::import_catalog_file(
+                    &context.db,
+                    &user_kernel_catalog,
+                )
+                .await
+                .map_err(anyhow::Error::msg)?;
+                let migrated =
+                    business::services::browser_kernels::migrate_legacy_environment_bindings(
+                        &context.db,
+                    )
+                    .await
+                    .map_err(anyhow::Error::msg)?;
+                if imported > 0 || migrated > 0 {
+                    log::info!(
+                        "Imported {imported} user browser kernel records and migrated {migrated} environment bindings"
+                    );
+                }
+                Ok(context)
+            })
+        })?
+        .join()
+        .map_err(|_| anyhow::anyhow!("Local business database initialization thread panicked"))?
+}
+
 pub fn run() {
     let ctx = tauri::generate_context!();
     let session_lock_manager = session_lock::SessionLockManager::new();
@@ -33,12 +70,18 @@ pub fn run() {
 
             let database_file = crate::core::paths::PathManager::get_business_database_file()?;
             let database_config = business::utils::DatabaseConfig::from_path(&database_file);
+            let user_kernel_catalog =
+                crate::core::paths::PathManager::get_config_dir()?.join("browser-kernels.json");
             let business_context =
-                tauri::async_runtime::block_on(business::svc_ctx::SvcCtx::new(&database_config))?;
+                initialize_business_context(database_config, user_kernel_catalog.clone())?;
             app.manage(business_context);
             log::info!(
                 "Local business database initialized: {}",
                 database_file.display()
+            );
+            log::info!(
+                "Optional user browser kernel catalog: {}",
+                user_kernel_catalog.display()
             );
 
             setup::register_deep_link(app.handle().clone())?;

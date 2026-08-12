@@ -4,7 +4,7 @@ use serde_json::Value;
 use crate::{
     app::handle::get_app_handle,
     local_api::{
-        client::main_server::proxy_data_value_request,
+        client::business::dispatch_data_value_request,
         context::LocalApiRequestContext,
         entitys::{
             LocalApiBatchStartEnvironmentsRequest, LocalApiEnvironmentActionResponse,
@@ -22,7 +22,7 @@ macro_rules! environment_service {
             ctx: &LocalApiRequestContext,
             payload: Value,
         ) -> Result<Value, (StatusCode, String)> {
-            proxy_data_value_request::<$response_ty>(
+            dispatch_data_value_request::<$response_ty>(
                 concat!("environments", $path),
                 $permission,
                 &ctx.api_key,

@@ -151,10 +151,7 @@ pub async fn decrement_used_proxies(
 }
 
 /// 更新团队成员使用数（统计所有团队的活跃成员）
-pub async fn update_used_team_members(
-    pool: &Pool<Db>,
-    workspace_uuid: Uuid,
-) -> Result<(), Error> {
+pub async fn update_used_team_members(pool: &Pool<Db>, workspace_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE workspace_quotas wq

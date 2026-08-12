@@ -117,6 +117,7 @@ export const extensionsResources = {
       import: '导入插件',
       importing: '导入中...',
       install: '安装',
+      installSuccess: '插件已安装到本地',
       remove: '移除',
       empty: '暂无本地插件',
       emptyDescription: '点击“导入插件”将本地浏览器插件加入当前设备的插件库。',
@@ -349,6 +350,7 @@ export const extensionsResources = {
       import: 'Import Plugin',
       importing: 'Importing...',
       install: 'Install',
+      installSuccess: 'Extension installed locally',
       remove: 'Remove',
       empty: 'No local extensions',
       emptyDescription:

@@ -30,8 +30,8 @@ export const API_ENDPOINTS = {
 
 /** 浏览器内核版本 */
 export interface BrowserKernelVersion {
-  id: number;
-  type_id: number;
+  kernel_id: string;
+  type_code: string;
   resource_name: string;
   version: string;
   name?: string;
@@ -44,6 +44,7 @@ export interface BrowserKernelVersion {
   requires_extract?: boolean;
   entrypoint_template?: string;
   extract_root?: string;
+  installed?: boolean;
 }
 
 function buildEnvironmentUrls(urls: string[]) {
@@ -70,6 +71,7 @@ function buildWindowInfoPayload(config: WindowConfig['windowInfo']) {
     name: config.name,
     system: config.system,
     kernel: config.kernel,
+    kernel_id: config.kernelId || undefined,
     userAgent: config.userAgent,
     searchEngine: config.searchEngine,
     description: config.description,

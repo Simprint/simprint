@@ -4,12 +4,9 @@ import {
   markMessageRead,
   batchMarkMessagesRead,
   getMessageStats,
-  handleMessage,
   type Message,
   type MessageListRequest,
 } from '../api/messages';
-import { acceptInvitation, rejectInvitation } from '../../../../pages/team/src/api';
-import { useRefreshStore } from '../../../../services/store/src';
 import { toast } from 'sonner';
 
 const PAGE_SIZE = 20;
@@ -36,7 +33,6 @@ interface MessagesActions {
   loadMore: () => Promise<void>;
   markAsRead: (messageUuid: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
-  handleInvitation: (message: Message, action: 'accept' | 'reject') => Promise<void>;
   setMessageTypeFilter: (type: string | null) => void;
   setIsReadFilter: (isRead: boolean | null) => void;
 }
@@ -150,103 +146,6 @@ export const useMessagesStore = create<MessagesState & MessagesActions>((set, ge
       toast.success(`已标记 ${unreadUuids.length} 条消息为已读`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '批量标记已读失败');
-    }
-  },
-
-  handleInvitation: async (message: Message, action: 'accept' | 'reject') => {
-    // 检查是否是团队邀请消息
-    if (message.message_type !== 'team_invitation') {
-      toast.error('操作失败');
-      return;
-    }
-
-    // 检查是否已经处理过
-    if (message.action_status === 'accepted' || message.action_status === 'rejected') {
-      toast.error('该邀请已处理');
-      return;
-    }
-
-    // 检查 metadata 中是否有 token
-    if (!message.metadata || !message.metadata.token) {
-      toast.error('邀请信息无效');
-      return;
-    }
-
-    try {
-      if (action === 'accept') {
-        // 先接受邀请
-        await acceptInvitation({ token: message.metadata.token as string });
-
-        // 然后更新消息状态
-        await handleMessage({
-          message_uuid: message.message_uuid,
-          action: 'accept',
-        });
-
-        // 标记消息为已读（如果还未读）
-        if (!message.is_read) {
-          await get().markAsRead(message.message_uuid);
-        }
-
-        // 更新本地状态
-        set((state) => ({
-          messages: state.messages.map((msg) =>
-            msg.message_uuid === message.message_uuid
-              ? {
-                  ...msg,
-                  action_status: 'accepted',
-                  action_at: new Date().toISOString(),
-                  is_read: true,
-                  read_at: message.read_at || new Date().toISOString(),
-                }
-              : msg
-          ),
-        }));
-
-        // 触发团队数据刷新
-        useRefreshStore.getState().refreshTeams();
-
-        toast.success('已接受邀请');
-      } else {
-        // 先拒绝邀请
-        await rejectInvitation({ token: message.metadata.token as string });
-
-        // 然后更新消息状态
-        await handleMessage({
-          message_uuid: message.message_uuid,
-          action: 'reject',
-        });
-
-        // 标记消息为已读（如果还未读）
-        if (!message.is_read) {
-          await get().markAsRead(message.message_uuid);
-        }
-
-        // 更新本地状态
-        set((state) => ({
-          messages: state.messages.map((msg) =>
-            msg.message_uuid === message.message_uuid
-              ? {
-                  ...msg,
-                  action_status: 'rejected',
-                  action_at: new Date().toISOString(),
-                  is_read: true,
-                  read_at: message.read_at || new Date().toISOString(),
-                }
-              : msg
-          ),
-        }));
-
-        toast.success('已拒绝邀请');
-      }
-
-      // 刷新统计
-      await get().loadStats();
-    } catch (e) {
-      const errorMessage =
-        e instanceof Error ? e.message : action === 'accept' ? '接受邀请失败' : '拒绝邀请失败';
-      toast.error(errorMessage);
-      console.error('Failed to handle invitation:', e);
     }
   },
 

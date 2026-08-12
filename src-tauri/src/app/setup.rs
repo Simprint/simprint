@@ -11,12 +11,15 @@ pub fn register_plugins(app_handle: &AppHandle) {
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             use tauri::Manager;
 
-            if let Some(main_window) = app.get_webview_window("main") {
+            let app_state = crate::app::init_state::read_app_init_state();
+            if app_state.is_initialized && !app_state.is_updating {
+                let Some(main_window) = app.get_webview_window("main") else {
+                    return;
+                };
+
                 // 如果程序启动期间得到深度链接参数，则将事件传递并传递打开的链接给前端。
                 if let Some(arg_1) = argv.get(1) {
                     if arg_1.contains("://") {
-                        // 收到 deep link 时，先在本地持久化 referral_code（若有）
-                        crate::infrastructure::deeplink::process_arg(arg_1);
                         main_window.emit("deep-link-open", arg_1).unwrap();
                     }
 
@@ -25,14 +28,16 @@ pub fn register_plugins(app_handle: &AppHandle) {
 
                 let _ = main_window.show();
                 let _ = main_window.set_focus();
+            } else if let Some(splash_window) = app.get_webview_window("splashscreen") {
+                // 主窗口仍在并行加载时，不能由第二个实例提前显示。
+                let _ = splash_window.show();
+                let _ = splash_window.set_focus();
             }
         }))
         .unwrap();
 
     // Register process plugin
     app_handle.plugin(tauri_plugin_process::init()).unwrap();
-
-    app_handle.plugin(tauri_plugin_upload::init()).unwrap();
 
     // deep-link 插件
     app_handle.plugin(tauri_plugin_deep_link::init()).unwrap();
@@ -68,24 +73,6 @@ pub fn register_deep_link(app: AppHandle) -> Result<(), anyhow::Error> {
         app.deep_link().register_all()?;
     };
     Ok(())
-}
-
-/// 后台初始化服务器公钥
-pub fn init_server_public_key_background(app_handle: AppHandle) {
-    tauri::async_runtime::spawn(async move {
-        match crate::infrastructure::persistence::credential::init_server_public_key().await {
-            Ok(_) => {
-                log::info!("Server connection successful");
-                // 通知前端：服务器连接成功
-                let _ = app_handle.emit("server-connected", ());
-            }
-            Err(e) => {
-                log::warn!("Server connection failed: {}", e);
-                // 通知前端：服务器连接失败
-                let _ = app_handle.emit("server-connection-failed", e);
-            }
-        }
-    });
 }
 
 pub fn init_simprint_runtime_background(app_handle: AppHandle) {

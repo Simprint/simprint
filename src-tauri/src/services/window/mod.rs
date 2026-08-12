@@ -255,7 +255,7 @@ impl WindowService {
     }
 
     /// 创建主窗口
-    pub async fn create_main_window(app_handle: &AppHandle) -> Result<()> {
+    pub fn create_main_window(app_handle: &AppHandle) -> Result<()> {
         if app_handle.get_webview_window("main").is_some() {
             log::debug!("主窗口已存在，跳过创建");
             return Ok(());

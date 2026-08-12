@@ -234,10 +234,7 @@ pub async fn delete_proxy(pool: &Pool<Db>, proxy_uuid: Uuid) -> Result<(), Error
 }
 
 /// 批量软删除代理
-pub async fn batch_delete_proxies(
-    pool: &Pool<Db>,
-    proxy_uuids: &[Uuid],
-) -> Result<u64, Error> {
+pub async fn batch_delete_proxies(pool: &Pool<Db>, proxy_uuids: &[Uuid]) -> Result<u64, Error> {
     if proxy_uuids.is_empty() {
         return Ok(0);
     }

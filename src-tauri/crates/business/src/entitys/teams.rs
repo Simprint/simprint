@@ -43,10 +43,10 @@ pub struct TeamMemberFilters {
     pub status: Option<String>,
 }
 
-/// 邀请成员请求
+/// 将另一个本地用户加入团队。
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct InviteMemberRequest {
-    pub email: String,
+pub struct AddMemberRequest {
+    pub user_uuid: Uuid,
     pub role: String,
 }
 

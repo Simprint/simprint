@@ -29,7 +29,6 @@ struct BootstrapConfig {
     cache_dir: Option<String>,
     data_dir: Option<String>,
     kernels_dir: Option<String>,
-    referral_dir: Option<String>,
     updater_dir: Option<String>,
     update_tasks_file: Option<String>,
 }
@@ -173,16 +172,6 @@ impl PathManager {
             Self::load_bootstrap().kernels_dir.as_deref(),
             Self::get_root_dir()?,
             "kernels",
-        )?;
-        Self::ensure_dir(&dir)?;
-        Ok(dir)
-    }
-
-    pub fn get_referral_dir() -> Result<PathBuf> {
-        let dir = Self::resolve_named_dir(
-            Self::load_bootstrap().referral_dir.as_deref(),
-            Self::get_root_dir()?,
-            "referral",
         )?;
         Self::ensure_dir(&dir)?;
         Ok(dir)
@@ -343,11 +332,6 @@ impl PathManager {
             )
             .context("写入注册表 KernelsDir 失败")?;
             key.set_value(
-                "ReferralDir",
-                &Self::get_referral_dir()?.to_string_lossy().to_string(),
-            )
-            .context("写入注册表 ReferralDir 失败")?;
-            key.set_value(
                 "UpdaterDir",
                 &Self::get_updater_dir()?.to_string_lossy().to_string(),
             )
@@ -407,7 +391,6 @@ impl BootstrapConfig {
             && self.cache_dir.is_none()
             && self.data_dir.is_none()
             && self.kernels_dir.is_none()
-            && self.referral_dir.is_none()
             && self.updater_dir.is_none()
             && self.update_tasks_file.is_none()
     }

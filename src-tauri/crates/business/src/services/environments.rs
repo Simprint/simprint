@@ -19,6 +19,24 @@ use crate::svc_ctx::SvcCtx;
 
 // ============ Environments ============
 
+fn window_info_with_kernel_id(
+    window_info: &serde_json::Value,
+    kernel: &crate::services::browser_kernels::BrowserKernelVersion,
+) -> serde_json::Value {
+    let mut window_info = window_info.clone();
+    if let Some(object) = window_info.as_object_mut() {
+        object.insert(
+            "kernel_id".to_string(),
+            serde_json::Value::String(kernel.kernel_id.clone()),
+        );
+        object.insert(
+            "kernel".to_string(),
+            serde_json::Value::String(kernel.resource_name.clone()),
+        );
+    }
+    window_info
+}
+
 /// 创建环境
 pub async fn create_environment_service(
     svc_ctx: &SvcCtx,
@@ -27,6 +45,14 @@ pub async fn create_environment_service(
     team_uuid: Uuid,
     payload: &CreateEnvironmentRequest,
 ) -> Result<Uuid, String> {
+    let selected_kernel = crate::services::browser_kernels::resolve_requested_kernel(
+        &svc_ctx.db,
+        &payload.config.window_info,
+        true,
+    )
+    .await?;
+    let window_info = window_info_with_kernel_id(&payload.config.window_info, &selected_kernel);
+
     // 1. 检查用户是否在当前工作空间的团队中（工作空间级别）
     let team_member =
         models::teams::fetch_team_member(&svc_ctx.db, workspace_uuid, team_uuid, user_uuid)
@@ -83,12 +109,7 @@ pub async fn create_environment_service(
         .get("system")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
-    let kernel_info = payload
-        .config
-        .window_info
-        .get("kernel")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let kernel_info = Some(selected_kernel.resource_name.clone());
 
     // 创建环境
     let env_uuid = models::insert_environment(
@@ -110,7 +131,7 @@ pub async fn create_environment_service(
     models::upsert_environment_config(
         &svc_ctx.db,
         env_uuid,
-        &payload.config.window_info,
+        &window_info,
         &payload.config.basic_settings,
         &payload.config.fingerprint_settings,
         &payload.config.device_settings,
@@ -119,6 +140,13 @@ pub async fn create_environment_service(
     )
     .await
     .map_err(|e| e.to_string())?;
+
+    crate::services::browser_kernels::bind_environment_kernel(
+        &svc_ctx.db,
+        env_uuid,
+        &selected_kernel.kernel_id,
+    )
+    .await?;
 
     replace_environment_urls(svc_ctx, env_uuid, payload.urls.as_deref()).await?;
     replace_environment_cookies(svc_ctx, env_uuid, payload.cookies.as_deref()).await?;
@@ -993,10 +1021,36 @@ pub async fn update_environment_service(
 
     // 更新配置
     if let Some(config) = &payload.config {
+        let selected_kernel = if config
+            .window_info
+            .get("kernel_id")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|value| !value.trim().is_empty())
+        {
+            crate::services::browser_kernels::resolve_requested_kernel(
+                &svc_ctx.db,
+                &config.window_info,
+                false,
+            )
+            .await?
+        } else if let Some(bound) =
+            crate::services::browser_kernels::get_environment_kernel(&svc_ctx.db, payload.uuid)
+                .await?
+        {
+            bound
+        } else {
+            crate::services::browser_kernels::resolve_requested_kernel(
+                &svc_ctx.db,
+                &config.window_info,
+                false,
+            )
+            .await?
+        };
+        let window_info = window_info_with_kernel_id(&config.window_info, &selected_kernel);
         models::upsert_environment_config(
             &svc_ctx.db,
             payload.uuid,
-            &config.window_info,
+            &window_info,
             &config.basic_settings,
             &config.fingerprint_settings,
             &config.device_settings,
@@ -1005,6 +1059,19 @@ pub async fn update_environment_service(
         )
         .await
         .map_err(|e| e.to_string())?;
+        crate::services::browser_kernels::bind_environment_kernel(
+            &svc_ctx.db,
+            payload.uuid,
+            &selected_kernel.kernel_id,
+        )
+        .await?;
+        models::update_environment_kernel_info(
+            &svc_ctx.db,
+            payload.uuid,
+            &selected_kernel.resource_name,
+        )
+        .await
+        .map_err(|error| error.to_string())?;
     }
 
     replace_environment_urls(svc_ctx, payload.uuid, payload.urls.as_deref()).await?;

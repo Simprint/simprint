@@ -166,6 +166,7 @@ pub async fn validate_local_api_key_service(
 
     Ok(ValidateLocalApiKeyDto {
         valid: true,
+        user_uuid: api_key.user_uuid,
         permission_code: definition.permission_code,
         requests_today: api_key.requests_today + 1,
         daily_limit: api_key.daily_limit,

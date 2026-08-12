@@ -191,10 +191,7 @@ pub async fn fetch_tags(
 }
 
 /// 根据 UUID 查询标签
-pub async fn fetch_tag_by_uuid(
-    pool: &Pool<Db>,
-    tag_uuid: Uuid,
-) -> Result<Option<TagDto>, Error> {
+pub async fn fetch_tag_by_uuid(pool: &Pool<Db>, tag_uuid: Uuid) -> Result<Option<TagDto>, Error> {
     let rec = sqlx::query_as::<_, TagDto>(
         r#"
         SELECT id, uuid, user_uuid, team_uuid, name, color, sort_order,
@@ -605,6 +602,22 @@ pub async fn update_environment(
     Ok(())
 }
 
+pub async fn update_environment_kernel_info(
+    pool: &Pool<Db>,
+    env_uuid: Uuid,
+    kernel_info: &str,
+) -> Result<(), Error> {
+    sqlx::query(
+        "UPDATE environments SET kernel_info = $1, updated_at = CURRENT_TIMESTAMP \
+         WHERE uuid = $2 AND deleted_at IS NULL",
+    )
+    .bind(kernel_info)
+    .bind(env_uuid)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 /// 更新环境状态
 pub async fn update_environment_status(
     pool: &Pool<Db>,
@@ -646,10 +659,7 @@ pub async fn update_environment_proxy(
 }
 
 /// 更新环境最后打开时间
-pub async fn update_environment_last_opened(
-    pool: &Pool<Db>,
-    env_uuid: Uuid,
-) -> Result<(), Error> {
+pub async fn update_environment_last_opened(pool: &Pool<Db>, env_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE environments SET last_opened_at = CURRENT_TIMESTAMP
@@ -679,10 +689,7 @@ pub async fn delete_environment(pool: &Pool<Db>, env_uuid: Uuid) -> Result<(), E
 }
 
 /// 批量软删除环境
-pub async fn batch_delete_environments(
-    pool: &Pool<Db>,
-    env_uuids: &[Uuid],
-) -> Result<u64, Error> {
+pub async fn batch_delete_environments(pool: &Pool<Db>, env_uuids: &[Uuid]) -> Result<u64, Error> {
     if env_uuids.is_empty() {
         return Ok(0);
     }
@@ -846,10 +853,7 @@ pub async fn restore_environment(pool: &Pool<Db>, env_uuid: Uuid) -> Result<(), 
 }
 
 /// 批量恢复环境
-pub async fn batch_restore_environments(
-    pool: &Pool<Db>,
-    env_uuids: &[Uuid],
-) -> Result<u64, Error> {
+pub async fn batch_restore_environments(pool: &Pool<Db>, env_uuids: &[Uuid]) -> Result<u64, Error> {
     if env_uuids.is_empty() {
         return Ok(0);
     }
@@ -871,10 +875,7 @@ pub async fn batch_restore_environments(
 }
 
 /// 永久删除环境（真正的 DELETE）
-pub async fn permanent_delete_environment(
-    pool: &Pool<Db>,
-    env_uuid: Uuid,
-) -> Result<(), Error> {
+pub async fn permanent_delete_environment(pool: &Pool<Db>, env_uuid: Uuid) -> Result<(), Error> {
     // 先删除关联数据
     sqlx::query("DELETE FROM environment_tags WHERE environment_uuid = $1")
         .bind(env_uuid)
@@ -1115,10 +1116,7 @@ pub async fn clear_environment_tags(pool: &Pool<Db>, env_uuid: Uuid) -> Result<(
 }
 
 /// 查询环境的所有标签
-pub async fn fetch_environment_tags(
-    pool: &Pool<Db>,
-    env_uuid: Uuid,
-) -> Result<Vec<TagDto>, Error> {
+pub async fn fetch_environment_tags(pool: &Pool<Db>, env_uuid: Uuid) -> Result<Vec<TagDto>, Error> {
     let recs = sqlx::query_as::<_, TagDto>(
         r#"
         SELECT t.id, t.uuid, t.user_uuid, t.team_uuid, t.name, t.color, t.sort_order,
@@ -1410,10 +1408,7 @@ pub async fn update_template(
 }
 
 /// 增加模板使用次数
-pub async fn increment_template_usage(
-    pool: &Pool<Db>,
-    template_uuid: Uuid,
-) -> Result<(), Error> {
+pub async fn increment_template_usage(pool: &Pool<Db>, template_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE templates SET usage_count = usage_count + 1
@@ -1700,10 +1695,7 @@ pub async fn delete_environment_cookie(pool: &Pool<Db>, cookie_id: i32) -> Resul
 }
 
 /// 清空环境的所有 Cookies
-pub async fn clear_environment_cookies(
-    pool: &Pool<Db>,
-    env_uuid: Uuid,
-) -> Result<u64, Error> {
+pub async fn clear_environment_cookies(pool: &Pool<Db>, env_uuid: Uuid) -> Result<u64, Error> {
     let result = sqlx::query(
         r#"
         DELETE FROM environment_cookies WHERE environment_uuid = $1

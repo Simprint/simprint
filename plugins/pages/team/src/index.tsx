@@ -89,11 +89,11 @@ const TeamPage: React.FC = () => {
       {/* 邀请成员对话框 */}
       <TeamInviteDialog
         open={dialogStore.inviteDialogOpen}
-        email={dialogStore.inviteEmail}
+        userUuid={dialogStore.inviteUserUuid}
         role={dialogStore.inviteRole}
         submitting={operations.submitting}
         onOpenChange={dialogStore.setInviteDialogOpen}
-        onEmailChange={dialogStore.setInviteEmail}
+        onUserChange={dialogStore.setInviteUserUuid}
         onRoleChange={dialogStore.setInviteRole}
         onSubmit={handlers.handleSubmitInvite}
       />

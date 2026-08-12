@@ -1,7 +1,7 @@
 // 确保扩展点在所有插件导入之前注册
 import '../../extension-points';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { BrowserRouter } from 'react-router';
 import { pluginRegistry } from '@slotkitjs/core';
 import { useAuthStore } from '../../../../plugins/services/store/src';
@@ -23,24 +23,40 @@ interface AppLayoutProps {
    * 布局模式：'main' 渲染主应用布局，'splashscreen' 渲染启动屏幕，'syncer' 渲染同步器窗口
    */
   mode?: 'main' | 'splashscreen' | 'syncer';
+  pluginsReady?: boolean;
 }
 
-export const AppLayout: React.FC<AppLayoutProps> = ({ mode = 'main' }) => {
+export const AppLayout: React.FC<AppLayoutProps> = ({ mode = 'main', pluginsReady = false }) => {
   const [windowManagerComponent, setWindowManagerComponent] = useState<React.ComponentType | null>(
     null
   );
   const { initAuth, isAuthenticated } = useAuthStore();
+  const [authReady, setAuthReady] = useState(mode !== 'main');
+  const [routesReady, setRoutesReady] = useState(false);
   useDisableDevTools();
   const sessionLock = useSessionLock(mode === 'main');
 
   // 初始化认证状态（仅在 main 模式下）
   useEffect(() => {
     if (mode === 'main') {
-      initAuth().catch((error) => {
-        console.error('[AppLayout] 初始化认证状态失败:', error);
-      });
+      let cancelled = false;
+      initAuth()
+        .catch((error) => {
+          console.error('[AppLayout] 初始化认证状态失败:', error);
+        })
+        .finally(() => {
+          if (!cancelled) setAuthReady(true);
+        });
+
+      return () => {
+        cancelled = true;
+      };
     }
   }, [mode, initAuth]);
+
+  const handleRoutesReady = useCallback(() => {
+    setRoutesReady(true);
+  }, []);
 
   // 监听插件注册，确保 window-manager 插件加载后被渲染
   useEffect(() => {
@@ -86,18 +102,20 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ mode = 'main' }) => {
     <SettingsBootstrap>
       <ThemeProvider defaultTheme="system" storageKey="simprint-ui-theme">
         <I18nProvider resources={{ common: commonResources }}>
-        <BrowserRouter>
-          {windowManagerComponent && React.createElement(windowManagerComponent)}
-          <AppRoutes />
-          <SettingsDialog />
-          <SessionLockOverlay
-            open={mode === 'main' && isAuthenticated && sessionLock.isLocked}
-            unlocking={sessionLock.unlocking}
-            error={sessionLock.error}
-            onUnlock={sessionLock.unlock}
-          />
-          <Toaster />
-        </BrowserRouter>
+          <BrowserRouter>
+            {pluginsReady && authReady && routesReady && windowManagerComponent
+              ? React.createElement(windowManagerComponent)
+              : null}
+            <AppRoutes onReady={handleRoutesReady} />
+            <SettingsDialog />
+            <SessionLockOverlay
+              open={mode === 'main' && isAuthenticated && sessionLock.isLocked}
+              unlocking={sessionLock.unlocking}
+              error={sessionLock.error}
+              onUnlock={sessionLock.unlock}
+            />
+            <Toaster />
+          </BrowserRouter>
         </I18nProvider>
       </ThemeProvider>
     </SettingsBootstrap>

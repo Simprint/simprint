@@ -6,7 +6,7 @@ use crate::{
     app::handle::get_app_handle,
     domain::environment::EnvironmentStatus,
     local_api::{
-        client::main_server::proxy_data_request,
+        client::business::dispatch_data_request,
         entitys::{
             LocalApiBrowserKernelListResponse, LocalApiEnvironmentActionResponse,
             LocalApiEnvironmentDetailResponse, LocalApiEnvironmentListResponse,
@@ -84,14 +84,14 @@ impl LocalApiBridge {
         &self,
         request: LocalApiListEnvironmentsRequest,
     ) -> Result<LocalApiEnvironmentListResponse, McpToolError> {
-        self.proxy_main_server("environments/list", "environments.list", &request).await
+        self.dispatch_business("environments/list", "environments.list", &request).await
     }
 
     pub async fn get_environment(
         &self,
         env_uuid: &str,
     ) -> Result<LocalApiEnvironmentDetailResponse, McpToolError> {
-        self.proxy_main_server(
+        self.dispatch_business(
             "environments/detail",
             "environments.detail",
             &json!({ "uuid": env_uuid }),
@@ -182,14 +182,14 @@ impl LocalApiBridge {
     }
 
     pub async fn list_groups(&self) -> Result<LocalApiGroupListResponse, McpToolError> {
-        self.proxy_main_server("groups/list", "groups.list", &json!({})).await
+        self.dispatch_business("groups/list", "groups.list", &json!({})).await
     }
 
     pub async fn create_group<T: Serialize + ?Sized>(
         &self,
         payload: &T,
     ) -> Result<serde_json::Value, McpToolError> {
-        self.proxy_main_server("groups/create", "groups.create", payload).await
+        self.dispatch_business("groups/create", "groups.create", payload).await
     }
 
     pub async fn update_group<T: Serialize + ?Sized>(
@@ -197,13 +197,13 @@ impl LocalApiBridge {
         payload: &T,
     ) -> Result<(), McpToolError> {
         let _: serde_json::Value =
-            self.proxy_main_server("groups/update", "groups.update", payload).await?;
+            self.dispatch_business("groups/update", "groups.update", payload).await?;
         Ok(())
     }
 
     pub async fn delete_group(&self, group_uuid: &str) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "groups/delete",
                 "groups.delete",
                 &json!({ "uuid": group_uuid }),
@@ -213,38 +213,38 @@ impl LocalApiBridge {
     }
 
     pub async fn list_tags(&self) -> Result<Vec<LocalApiTagItem>, McpToolError> {
-        self.proxy_main_server("tags/list", "tags.list", &json!({})).await
+        self.dispatch_business("tags/list", "tags.list", &json!({})).await
     }
 
     pub async fn create_tag<T: Serialize + ?Sized>(
         &self,
         payload: &T,
     ) -> Result<serde_json::Value, McpToolError> {
-        self.proxy_main_server("tags/create", "tags.create", payload).await
+        self.dispatch_business("tags/create", "tags.create", payload).await
     }
 
     pub async fn update_tag<T: Serialize + ?Sized>(&self, payload: &T) -> Result<(), McpToolError> {
         let _: serde_json::Value =
-            self.proxy_main_server("tags/update", "tags.update", payload).await?;
+            self.dispatch_business("tags/update", "tags.update", payload).await?;
         Ok(())
     }
 
     pub async fn delete_tag(&self, tag_uuid: &str) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server("tags/delete", "tags.delete", &json!({ "uuid": tag_uuid }))
+            .dispatch_business("tags/delete", "tags.delete", &json!({ "uuid": tag_uuid }))
             .await?;
         Ok(())
     }
 
     pub async fn list_workspaces(&self) -> Result<LocalApiWorkspaceListResponse, McpToolError> {
-        self.proxy_main_server("workspaces/list", "workspaces.list", &json!({})).await
+        self.dispatch_business("workspaces/list", "workspaces.list", &json!({})).await
     }
 
     pub async fn get_workspace(
         &self,
         workspace_uuid: &str,
     ) -> Result<LocalApiWorkspaceDetail, McpToolError> {
-        self.proxy_main_server(
+        self.dispatch_business(
             "workspaces/get",
             "workspaces.get",
             &json!({ "uuid": workspace_uuid }),
@@ -254,7 +254,7 @@ impl LocalApiBridge {
 
     pub async fn switch_workspace(&self, workspace_uuid: &str) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "workspaces/switch",
                 "workspaces.switch",
                 &json!({ "workspace_uuid": workspace_uuid }),
@@ -267,11 +267,11 @@ impl LocalApiBridge {
         &self,
         request: LocalApiListProxiesRequest,
     ) -> Result<LocalApiProxyListResponse, McpToolError> {
-        self.proxy_main_server("proxies/list", "proxies.list", &request).await
+        self.dispatch_business("proxies/list", "proxies.list", &request).await
     }
 
     pub async fn get_proxy(&self, proxy_uuid: &str) -> Result<LocalApiProxyDetail, McpToolError> {
-        self.proxy_main_server(
+        self.dispatch_business(
             "proxies/detail",
             "proxies.detail",
             &json!({ "uuid": proxy_uuid }),
@@ -283,7 +283,7 @@ impl LocalApiBridge {
         &self,
         payload: &T,
     ) -> Result<serde_json::Value, McpToolError> {
-        self.proxy_main_server("proxies/create", "proxies.create", payload).await
+        self.dispatch_business("proxies/create", "proxies.create", payload).await
     }
 
     pub async fn update_proxy<T: Serialize + ?Sized>(
@@ -291,13 +291,13 @@ impl LocalApiBridge {
         payload: &T,
     ) -> Result<(), McpToolError> {
         let _: serde_json::Value =
-            self.proxy_main_server("proxies/update", "proxies.update", payload).await?;
+            self.dispatch_business("proxies/update", "proxies.update", payload).await?;
         Ok(())
     }
 
     pub async fn delete_proxy(&self, proxy_uuid: &str) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "proxies/delete",
                 "proxies.delete",
                 &json!({ "uuid": proxy_uuid }),
@@ -308,7 +308,7 @@ impl LocalApiBridge {
 
     pub async fn batch_delete_proxies(&self, proxy_uuids: Vec<String>) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "proxies/batch-delete",
                 "proxies.batch-delete",
                 &json!({ "uuids": proxy_uuids }),
@@ -321,7 +321,7 @@ impl LocalApiBridge {
         &self,
         request: LocalApiListBrowserKernelsRequest,
     ) -> Result<LocalApiBrowserKernelListResponse, McpToolError> {
-        self.proxy_main_server("browser-kernels/list", "browser-kernels.list", &request)
+        self.dispatch_business("browser-kernels/list", "browser-kernels.list", &request)
             .await
     }
 
@@ -330,7 +330,7 @@ impl LocalApiBridge {
         env_uuids: Vec<String>,
     ) -> Result<crate::local_api::entitys::LocalApiBatchEnvironmentDetailResponse, McpToolError>
     {
-        self.proxy_main_server(
+        self.dispatch_business(
             "environments/batch-detail",
             "environments.batch-detail",
             &json!({ "uuids": env_uuids }),
@@ -342,7 +342,7 @@ impl LocalApiBridge {
         &self,
         payload: &T,
     ) -> Result<serde_json::Value, McpToolError> {
-        self.proxy_main_server("environments/create", "environments.create", payload)
+        self.dispatch_business("environments/create", "environments.create", payload)
             .await
     }
 
@@ -351,14 +351,14 @@ impl LocalApiBridge {
         payload: &T,
     ) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server("environments/update", "environments.update", payload)
+            .dispatch_business("environments/update", "environments.update", payload)
             .await?;
         Ok(())
     }
 
     pub async fn delete_environment(&self, env_uuid: &str) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/delete",
                 "environments.delete",
                 &json!({ "uuid": env_uuid }),
@@ -372,7 +372,7 @@ impl LocalApiBridge {
         env_uuids: Vec<String>,
     ) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/batch-delete",
                 "environments.batch-delete",
                 &json!({ "uuids": env_uuids }),
@@ -386,7 +386,7 @@ impl LocalApiBridge {
         request: LocalApiListEnvironmentsRequest,
     ) -> Result<crate::local_api::entitys::LocalApiRecycleBinEnvironmentListResponse, McpToolError>
     {
-        self.proxy_main_server(
+        self.dispatch_business(
             "environments/recycle-bin/list",
             "environments.recycle-bin.list",
             &request,
@@ -396,7 +396,7 @@ impl LocalApiBridge {
 
     pub async fn restore_environment(&self, env_uuid: &str) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/recycle-bin/restore",
                 "environments.recycle-bin.restore",
                 &json!({ "uuid": env_uuid }),
@@ -410,7 +410,7 @@ impl LocalApiBridge {
         env_uuids: Vec<String>,
     ) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/recycle-bin/batch-restore",
                 "environments.recycle-bin.batch-restore",
                 &json!({ "uuids": env_uuids }),
@@ -421,7 +421,7 @@ impl LocalApiBridge {
 
     pub async fn permanent_delete_environment(&self, env_uuid: &str) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/recycle-bin/permanent-delete",
                 "environments.recycle-bin.permanent-delete",
                 &json!({ "uuid": env_uuid }),
@@ -435,7 +435,7 @@ impl LocalApiBridge {
         env_uuids: Vec<String>,
     ) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/recycle-bin/batch-permanent-delete",
                 "environments.recycle-bin.batch-permanent-delete",
                 &json!({ "uuids": env_uuids }),
@@ -449,7 +449,7 @@ impl LocalApiBridge {
         payload: &T,
     ) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server("environments/set-proxy", "environments.set-proxy", payload)
+            .dispatch_business("environments/set-proxy", "environments.set-proxy", payload)
             .await?;
         Ok(())
     }
@@ -459,7 +459,7 @@ impl LocalApiBridge {
         payload: &T,
     ) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/set-accounts",
                 "environments.set-accounts",
                 payload,
@@ -473,7 +473,7 @@ impl LocalApiBridge {
         payload: &T,
     ) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/assign-tags",
                 "environments.assign-tags",
                 payload,
@@ -487,7 +487,7 @@ impl LocalApiBridge {
         payload: &T,
     ) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/batch-assign-tags",
                 "environments.batch-assign-tags",
                 payload,
@@ -498,7 +498,7 @@ impl LocalApiBridge {
 
     pub async fn remove_tag<T: Serialize + ?Sized>(&self, payload: &T) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/remove-tag",
                 "environments.remove-tag",
                 payload,
@@ -512,7 +512,7 @@ impl LocalApiBridge {
         payload: &T,
     ) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/batch-remove-tags",
                 "environments.batch-remove-tags",
                 payload,
@@ -526,7 +526,7 @@ impl LocalApiBridge {
         payload: &T,
     ) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/move-to-group",
                 "environments.move-to-group",
                 payload,
@@ -540,7 +540,7 @@ impl LocalApiBridge {
         payload: &T,
     ) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/batch-move-to-group",
                 "environments.batch-move-to-group",
                 payload,
@@ -553,7 +553,7 @@ impl LocalApiBridge {
         &self,
         env_uuid: &str,
     ) -> Result<Vec<crate::local_api::entitys::LocalApiEnvironmentUrlItem>, McpToolError> {
-        self.proxy_main_server(
+        self.dispatch_business(
             "environments/urls/list",
             "environments.urls.list",
             &json!({ "uuid": env_uuid }),
@@ -565,13 +565,13 @@ impl LocalApiBridge {
         &self,
         payload: &T,
     ) -> Result<serde_json::Value, McpToolError> {
-        self.proxy_main_server("environments/urls/add", "environments.urls.add", payload)
+        self.dispatch_business("environments/urls/add", "environments.urls.add", payload)
             .await
     }
 
     pub async fn delete_environment_url(&self, id: i32) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/urls/delete",
                 "environments.urls.delete",
                 &json!({ "id": id }),
@@ -582,7 +582,7 @@ impl LocalApiBridge {
 
     pub async fn clear_environment_urls(&self, env_uuid: &str) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/urls/clear",
                 "environments.urls.clear",
                 &json!({ "environment_uuid": env_uuid }),
@@ -595,7 +595,7 @@ impl LocalApiBridge {
         &self,
         env_uuid: &str,
     ) -> Result<Vec<crate::local_api::entitys::LocalApiEnvironmentCookieItem>, McpToolError> {
-        self.proxy_main_server(
+        self.dispatch_business(
             "environments/cookies/list",
             "environments.cookies.list",
             &json!({ "uuid": env_uuid }),
@@ -607,7 +607,7 @@ impl LocalApiBridge {
         &self,
         payload: &T,
     ) -> Result<serde_json::Value, McpToolError> {
-        self.proxy_main_server(
+        self.dispatch_business(
             "environments/cookies/add",
             "environments.cookies.add",
             payload,
@@ -617,7 +617,7 @@ impl LocalApiBridge {
 
     pub async fn delete_environment_cookie(&self, id: i32) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/cookies/delete",
                 "environments.cookies.delete",
                 &json!({ "id": id }),
@@ -628,7 +628,7 @@ impl LocalApiBridge {
 
     pub async fn clear_environment_cookies(&self, env_uuid: &str) -> Result<(), McpToolError> {
         let _: serde_json::Value = self
-            .proxy_main_server(
+            .dispatch_business(
                 "environments/cookies/clear",
                 "environments.cookies.clear",
                 &json!({ "environment_uuid": env_uuid }),
@@ -637,9 +637,9 @@ impl LocalApiBridge {
         Ok(())
     }
 
-    async fn proxy_main_server<T, P>(
+    async fn dispatch_business<T, P>(
         &self,
-        server_path: &str,
+        route: &str,
         permission_code: &str,
         payload: &P,
     ) -> Result<T, McpToolError>
@@ -650,7 +650,7 @@ impl LocalApiBridge {
         let payload = serde_json::to_value(payload)
             .map_err(|error| McpToolError::internal(error.to_string()))?;
 
-        proxy_data_request::<T>(server_path, permission_code, &self.api_key, payload)
+        dispatch_data_request::<T>(route, permission_code, &self.api_key, payload)
             .await
             .map_err(map_proxy_error)
     }

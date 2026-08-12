@@ -37,6 +37,7 @@ pub struct BrowserKernelGroupSummary {
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct BrowserKernelVersionSummary {
+    pub kernel_id: String,
     pub resource_name: String,
     pub version: String,
     pub name: Option<String>,
@@ -103,6 +104,7 @@ fn map_browser_kernel_version(
     version: LocalApiBrowserKernelVersion,
 ) -> BrowserKernelVersionSummary {
     BrowserKernelVersionSummary {
+        kernel_id: version.kernel_id,
         resource_name: version.resource_name,
         version: version.version,
         name: version.name,
