@@ -26,13 +26,8 @@ max_lifetime = 3000
 acquire_timeout = 30
 idle_timeout = 600
 
-# Omitting [redis] selects the in-process TTL cache.
-
 [storage]
-backend = "local"
-local_path = "./data/storage"
-public_base_url = "http://127.0.0.1:40041/assets/simprint-client"
-bucket = "simprint-client"
+public_base_url = "https://your-resource-download-host.example"
 avatar_root = "avatars"
 extension_root = "extensions"
 version_root = "versions"

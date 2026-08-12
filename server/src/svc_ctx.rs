@@ -15,11 +15,7 @@ pub struct SvcCtx {
 impl SvcCtx {
     pub async fn new(config: &IConfig) -> Result<Self, anyhow::Error> {
         let db = Self::create_db(&config.database).await?;
-        let cache = if let Some(redis) = &config.redis {
-            CacheStore::redis(&redis.url).await?
-        } else {
-            CacheStore::memory()
-        };
+        let cache = CacheStore::memory();
 
         Ok(Self {
             config: config.clone(),

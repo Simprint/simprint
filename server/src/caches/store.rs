@@ -7,14 +7,10 @@ use std::{
 };
 
 use dashmap::{DashMap, mapref::entry::Entry};
-use redis::{AsyncCommands, aio::ConnectionManager, cmd};
 use serde::{Serialize, de::DeserializeOwned};
 
 #[derive(Clone)]
-pub enum CacheStore {
-    Memory(Arc<MemoryCache>),
-    Redis(ConnectionManager),
-}
+pub struct CacheStore(Arc<MemoryCache>);
 
 #[derive(Default)]
 pub struct MemoryCache {
@@ -35,23 +31,11 @@ impl CacheEntry {
 
 impl CacheStore {
     pub fn memory() -> Self {
-        Self::Memory(Arc::new(MemoryCache::default()))
-    }
-
-    pub async fn redis(url: &str) -> Result<Self, anyhow::Error> {
-        let client = redis::Client::open(url)?;
-        let connection = ConnectionManager::new(client).await?;
-        Ok(Self::Redis(connection))
+        Self(Arc::new(MemoryCache::default()))
     }
 
     pub async fn get_string(&self, key: &str) -> Result<Option<String>, anyhow::Error> {
-        match self {
-            Self::Memory(cache) => Ok(cache.get(key)),
-            Self::Redis(connection) => {
-                let mut connection = connection.clone();
-                Ok(connection.get(key).await?)
-            }
-        }
+        Ok(self.0.get(key))
     }
 
     pub async fn set_string(
@@ -62,13 +46,7 @@ impl CacheStore {
     ) -> Result<(), anyhow::Error> {
         let key = key.into();
         let value = value.into();
-        match self {
-            Self::Memory(cache) => cache.set(key, value, ttl),
-            Self::Redis(connection) => {
-                let mut connection = connection.clone();
-                let _: () = connection.set_ex(key, value, ttl.as_secs()).await?;
-            }
-        }
+        self.0.set(key, value, ttl);
         Ok(())
     }
 
@@ -96,31 +74,12 @@ impl CacheStore {
     }
 
     pub async fn delete(&self, key: &str) -> Result<(), anyhow::Error> {
-        match self {
-            Self::Memory(cache) => {
-                cache.entries.remove(key);
-            }
-            Self::Redis(connection) => {
-                let mut connection = connection.clone();
-                let _: usize = connection.del(key).await?;
-            }
-        }
+        self.0.entries.remove(key);
         Ok(())
     }
 
     pub async fn delete_prefix(&self, prefix: &str) -> Result<(), anyhow::Error> {
-        match self {
-            Self::Memory(cache) => cache.delete_prefix(prefix),
-            Self::Redis(connection) => {
-                let mut connection = connection.clone();
-                let pattern = format!("{prefix}*");
-                let keys: Vec<String> =
-                    cmd("KEYS").arg(pattern).query_async(&mut connection).await?;
-                if !keys.is_empty() {
-                    let _: usize = connection.del(keys).await?;
-                }
-            }
-        }
+        self.0.delete_prefix(prefix);
         Ok(())
     }
 
@@ -133,17 +92,7 @@ impl CacheStore {
     }
 
     pub async fn increment(&self, key: &str, ttl: Duration) -> Result<i64, anyhow::Error> {
-        match self {
-            Self::Memory(cache) => Ok(cache.increment(key, ttl)?),
-            Self::Redis(connection) => {
-                let mut connection = connection.clone();
-                let count: i64 = connection.incr(key, 1).await?;
-                if count == 1 {
-                    let _: bool = connection.expire(key, ttl.as_secs() as i64).await?;
-                }
-                Ok(count)
-            }
-        }
+        Ok(self.0.increment(key, ttl)?)
     }
 }
 

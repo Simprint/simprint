@@ -25,15 +25,8 @@ max_lifetime = 3000
 acquire_timeout = 30
 idle_timeout = 600
 
-[redis]
-url = "redis://redis:6379?protocol=resp3"
-
 [storage]
-endpoint = "https://your-object-storage-endpoint.example"
-public_base_url = "https://your-object-storage-public.example"
-access_key = "change-me"
-secret_access_key = "change-me"
-bucket = "simprint-client"
+public_base_url = "https://your-resource-download-host.example"
 avatar_root = "avatars"
 extension_root = "extensions"
 version_root = "versions"

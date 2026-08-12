@@ -10,7 +10,7 @@ path = "src/lib.rs"
 [dependencies]
 axum = { version = "0.8", features = ["macros", "multipart", "ws"] }
 tower = "0.5.2"
-tower-http = { version = "0.6", features = ["cors", "default", "fs"] }
+tower-http = { version = "0.6", features = ["cors", "default"] }
 tokio = { version = "1", features = [
     "macros",
     "rt-multi-thread",
@@ -58,12 +58,6 @@ sqlx = { version = "0.8", features = [
     "rust_decimal",
     "bigdecimal",
 ] }
-redis = { version = "0.31.0", features = [
-    "tokio-comp",
-    "json",
-    "tokio-native-tls-comp",
-    "connection-manager",
-] }
 uuid = { version = "1.11.0", features = [
     "v4",
     "fast-rng",
@@ -76,7 +70,6 @@ bytes = "1.10.0"
 dashmap = "6.1.0"
 rcon = { version = "0.6.0", features = ["rt-tokio", "rt-async-std"] }
 tungstenite = "0.26.2"
-minio = "0.3.0"
 textnonce = "1.0.0"
 url = "2.5.4"
 urlencoding = "2.1.3"

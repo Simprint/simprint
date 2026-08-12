@@ -1,10 +1,9 @@
 use std::{future::Future, net::SocketAddr};
 
 use axum::{Router, middleware};
-use tower_http::services::ServeDir;
 
 use crate::{
-    init_encrypt_secret, init_storage, middlewares,
+    init_encrypt_secret, middlewares,
     routes::route::MetaRoute,
     routes::{
         accounts, audit, billing, browser_kernel, environments, extensions, group_permissions,
@@ -12,7 +11,7 @@ use crate::{
         templates, time, users, workspace_quotas, workspaces,
     },
     svc_ctx::SvcCtx,
-    utils::{IConfig, StorageBackend},
+    utils::IConfig,
 };
 
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!();
@@ -48,7 +47,6 @@ where
     tracing::info!("Embedded database migrations completed");
 
     init_encrypt_secret(&config).await;
-    init_storage(&config).await;
 
     let listener = tokio::net::TcpListener::bind(address).await?;
     let bound_address = listener.local_addr()?;
@@ -56,11 +54,6 @@ where
     let app = register_all_routes(&svc_ctx);
     let app = register_middlewares(&svc_ctx, app);
     let app = app.with_state(svc_ctx);
-    let app = if config.storage.backend == StorageBackend::Local {
-        app.nest_service("/assets", ServeDir::new(config.storage.local_root()))
-    } else {
-        app
-    };
 
     tracing::info!("Starting server on {}", bound_address);
 

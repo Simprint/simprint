@@ -1,6 +1,5 @@
 use config::{Config, ConfigError};
 use serde::Deserialize;
-use std::path::{Path, PathBuf};
 
 /// 数据库配置
 #[derive(Debug, Clone, Deserialize)]
@@ -13,53 +12,17 @@ pub struct DatabaseConfig {
     pub idle_timeout: u64,
 }
 
-/// Redis配置
-#[derive(Debug, Clone, Deserialize)]
-pub struct RedisConfig {
-    pub url: String,
-}
-
-/// 对象存储配置
-#[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum StorageBackend {
-    Local,
-    #[default]
-    S3,
-}
-
+/// Download-resource URL configuration retained by the transitional HTTP API.
 #[derive(Debug, Clone, Deserialize)]
 pub struct StorageConfig {
     #[serde(default)]
-    pub backend: StorageBackend,
-    #[serde(default)]
-    pub endpoint: String,
-    #[serde(default)]
     pub public_base_url: String,
-    #[serde(default)]
-    pub access_key: String,
-    #[serde(default)]
-    pub secret_access_key: String,
-    #[serde(default = "default_storage_bucket")]
-    pub bucket: String,
     #[serde(default = "default_avatar_root")]
     pub avatar_root: String,
     #[serde(default = "default_extension_root")]
     pub extension_root: String,
     #[serde(default = "default_version_root")]
     pub version_root: String,
-    #[serde(default)]
-    pub local_path: Option<PathBuf>,
-}
-
-impl StorageConfig {
-    pub fn local_root(&self) -> &Path {
-        self.local_path.as_deref().unwrap_or_else(|| Path::new("./data/storage"))
-    }
-}
-
-fn default_storage_bucket() -> String {
-    "simprint-client".to_string()
 }
 
 fn default_avatar_root() -> String {
@@ -126,7 +89,6 @@ pub struct AppConfig {
 pub struct IConfig {
     pub app: AppConfig,
     pub database: DatabaseConfig,
-    pub redis: Option<RedisConfig>,
     pub storage: StorageConfig,
     pub smtp: Option<SmtpConfig>,
     #[serde(default = "default_workspace_quota_config")]

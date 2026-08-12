@@ -18,15 +18,8 @@ pub mod utils;
 
 pub use app::{serve, serve_on, serve_on_with_shutdown};
 
-/// 初始化加密密钥
+/// Initialize the response-encryption key used by the transitional HTTP API.
 pub async fn init_encrypt_secret(config: &IConfig) {
     let key_path = &config.app.encrypt_secret_location;
     utils::init_rsa_secret(key_path).await;
-}
-
-/// 初始化对象存储
-pub async fn init_storage(config: &IConfig) {
-    utils::init_storage(&config.storage)
-        .await
-        .expect("初始化对象存储客户端失败");
 }
