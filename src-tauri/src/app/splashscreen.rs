@@ -1,7 +1,22 @@
 use crate::commands::updater;
+use std::ffi::OsStr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Emitter, Manager};
+
+const SKIP_UPDATE_ARG: &str = "--skip-update";
+
+fn has_skip_update_arg<I, S>(args: I) -> bool
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    args.into_iter().any(|arg| arg.as_ref() == OsStr::new(SKIP_UPDATE_ARG))
+}
+
+fn should_skip_update() -> bool {
+    has_skip_update_arg(std::env::args_os())
+}
 
 // 前端就绪标志
 static SPLASHSCREEN_FRONTEND_READY: std::sync::OnceLock<Arc<AtomicBool>> =
@@ -140,69 +155,81 @@ pub fn init_startup(app_handle: AppHandle) {
         emit_progress(&app_handle_clone, 90, "服务器连接成功", None);
 
         // 步骤4.1: 检查并处理更新（自动检查、下载、安装）
-        emit_progress(&app_handle_clone, 92, "检查更新...", Some("update-check"));
-        let updates_available = match updater::check_updates(app_handle_clone.clone()).await {
-            Ok(result) => result.has_updates,
-            Err(e) => {
-                log::error!("Update check failed: {}", e);
-                emit_progress(
-                    &app_handle_clone,
-                    92,
-                    "检查更新失败，继续启动",
-                    Some("update-check"),
-                );
-                false
-            }
-        };
-
-        if updates_available {
+        // 跳过参数只在更新入口消费，不传入更新服务、下载器或安装器。
+        if should_skip_update() {
+            log::info!("Skipping startup update flow because {SKIP_UPDATE_ARG} was provided");
             emit_progress(
                 &app_handle_clone,
-                94,
-                "检测到更新，开始下载...",
-                Some("update-download"),
+                92,
+                "已跳过更新检查",
+                Some("update-check"),
             );
-            match updater::download_updates(app_handle_clone.clone(), None).await {
-                Ok(download_result) => {
-                    if download_result.success_count > 0 {
-                        emit_progress(
-                            &app_handle_clone,
-                            96,
-                            "下载完成，准备安装",
-                            Some("update-install"),
-                        );
-                        // 触发安装并退出（updater.exe 负责后续重启）
-                        if let Err(e) =
-                            updater::start_update_install(app_handle_clone.clone()).await
-                        {
-                            log::error!("Update installation start failed: {}", e);
+            emit_status_complete(&app_handle_clone, "update-check");
+        } else {
+            emit_progress(&app_handle_clone, 92, "检查更新...", Some("update-check"));
+            let updates_available = match updater::check_updates(app_handle_clone.clone()).await {
+                Ok(result) => result.has_updates,
+                Err(e) => {
+                    log::error!("Update check failed: {}", e);
+                    emit_progress(
+                        &app_handle_clone,
+                        92,
+                        "检查更新失败，继续启动",
+                        Some("update-check"),
+                    );
+                    false
+                }
+            };
+
+            if updates_available {
+                emit_progress(
+                    &app_handle_clone,
+                    94,
+                    "检测到更新，开始下载...",
+                    Some("update-download"),
+                );
+                match updater::download_updates(app_handle_clone.clone(), None).await {
+                    Ok(download_result) => {
+                        if download_result.success_count > 0 {
                             emit_progress(
                                 &app_handle_clone,
                                 96,
-                                "安装启动失败，继续当前版本",
+                                "下载完成，准备安装",
                                 Some("update-install"),
                             );
+                            // 触发安装并退出（updater.exe 负责后续重启）
+                            if let Err(e) =
+                                updater::start_update_install(app_handle_clone.clone()).await
+                            {
+                                log::error!("Update installation start failed: {}", e);
+                                emit_progress(
+                                    &app_handle_clone,
+                                    96,
+                                    "安装启动失败，继续当前版本",
+                                    Some("update-install"),
+                                );
+                            }
+                            // 无论安装启动是否成功，都不再继续创建主窗口，交由 updater.exe 或用户重启
+                            return;
+                        } else {
+                            log::warn!("Update download failed, continuing with current version");
+                            emit_progress(
+                                &app_handle_clone,
+                                94,
+                                "下载失败，继续启动当前版本",
+                                Some("update-download"),
+                            );
                         }
-                        // 无论安装启动是否成功，都不再继续创建主窗口，交由 updater.exe 或用户重启
-                        return;
-                    } else {
-                        log::warn!("Update download failed, continuing with current version");
+                    }
+                    Err(e) => {
+                        log::error!("Update download error: {}", e);
                         emit_progress(
                             &app_handle_clone,
                             94,
-                            "下载失败，继续启动当前版本",
+                            "下载更新失败，继续启动当前版本",
                             Some("update-download"),
                         );
                     }
-                }
-                Err(e) => {
-                    log::error!("Update download error: {}", e);
-                    emit_progress(
-                        &app_handle_clone,
-                        94,
-                        "下载更新失败，继续启动当前版本",
-                        Some("update-download"),
-                    );
                 }
             }
         }
@@ -222,4 +249,23 @@ pub fn init_startup(app_handle: AppHandle) {
         // 发射加载完成事件（前端会自动关闭 splashscreen 并显示主窗口）
         emit_ready(&app_handle_clone);
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::has_skip_update_arg;
+
+    #[test]
+    fn detects_skip_update_argument() {
+        assert!(has_skip_update_arg(["simprint.exe", "--skip-update"]));
+    }
+
+    #[test]
+    fn does_not_treat_other_arguments_as_skip_update() {
+        assert!(!has_skip_update_arg([
+            "simprint.exe",
+            "--skip-update-check",
+            "simprint://open"
+        ]));
+    }
 }

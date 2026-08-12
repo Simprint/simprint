@@ -117,8 +117,6 @@ Simprint 目前正处于持续推进的开源迁移阶段，我们希望逐步�
 
 欢迎提交 Issue 和 Pull Request。如果你希望长期参与维护，也欢迎通过 Issue 或 Discussion 简单介绍自己，并说明你希望参与的方向。
 
-包括运行时进程（`simprint-runtime`）和浏览器内核层（`simprint-browser-kernel`）在内的更多核心组件，后续也会逐步为更广泛的协作做准备。我们的长期目标不是只开放客户端表层代码，而是逐步建设一个可持续维护的 Simprint 开源生态。
-
 ## Friend Links
 
 - [LINUX DO - 新的理想型社区](https://linux.do/)

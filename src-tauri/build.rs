@@ -17,22 +17,19 @@ mod crypto;
 // =============================================================================
 
 fn main() {
-    // 1. 准备 simprint-runtime 资源
-    runtime_assets::ensure_simprint_runtime_downloaded();
-
-    // 2. 仅在生产环境下下载 / 准备 webview-fixed 目录中的资源
+    // 1. 仅在生产环境下下载 / 准备 webview-fixed 目录中的资源
     #[cfg(feature = "production")]
     {
         webview_assets::ensure_webview_fixed_downloaded();
     }
 
-    // 3. 构建 Tauri 应用（处理 Windows manifest / 权限等）
+    // 2. 构建 Tauri 应用（处理 Windows manifest / 权限等）
     tauri_build_pipeline::build_tauri();
 
-    // 4. 为前端构建写入环境标记文件（.build-env）
+    // 3. 为前端构建写入环境标记文件（.build-env）
     frontend_env::prepare_frontend_build_env();
 
-    // 5. 读取明文配置并生成加密后的二进制配置文件
+    // 4. 读取明文配置并生成加密后的二进制配置文件
     config_encrypt::generate_encrypted_config();
 }
 
@@ -71,147 +68,7 @@ pub(crate) fn current_config_file_name() -> &'static str {
 }
 
 // =============================================================================
-// 模块一：Runtime 资源下载
-// =============================================================================
-
-mod runtime_assets {
-    use super::*;
-    use sha2::{Digest, Sha256};
-
-    const RUNTIME_RESOURCE_PATH: &str = "resources/simprint-runtime.exe";
-
-    #[derive(Deserialize)]
-    struct UpdaterConfig {
-        runtime_latest_json_url: String,
-    }
-
-    #[derive(Deserialize)]
-    struct RuntimeLatestRelease {
-        platforms: std::collections::HashMap<String, RuntimeLatestReleasePlatform>,
-    }
-
-    #[derive(Deserialize)]
-    struct RuntimeLatestReleasePlatform {
-        url: String,
-        sha256: String,
-    }
-
-    pub fn ensure_simprint_runtime_downloaded() {
-        println!("cargo:rerun-if-changed={}", RUNTIME_RESOURCE_PATH);
-
-        let target_path = Path::new(RUNTIME_RESOURCE_PATH);
-        if target_path.exists() {
-            return;
-        }
-
-        if let Some(parent) = target_path.parent() {
-            fs::create_dir_all(parent).unwrap_or_else(|error| {
-                panic!(
-                    "[BUILD ERROR] Failed to create runtime resources directory '{}': {}",
-                    parent.display(),
-                    error
-                );
-            });
-        }
-
-        let latest_json_url = detect_runtime_latest_json_url().unwrap_or_else(|| {
-            panic!(
-                "[BUILD ERROR] Failed to detect runtime latest.json URL from config file '{}'.",
-                super::current_config_file_name()
-            );
-        });
-
-        if let Err(error) = download_runtime_artifact(&latest_json_url, target_path) {
-            panic!("failed to download simprint-runtime: {error}");
-        }
-    }
-
-    fn detect_runtime_latest_json_url() -> Option<String> {
-        let config_file_name = super::current_config_file_name();
-
-        let config = Config::builder()
-            .add_source(config::File::with_name(config_file_name))
-            .build()
-            .map_err(|e| {
-                eprintln!(
-                    "[BUILD ERROR] Failed to load config file '{}': {}",
-                    config_file_name, e
-                );
-                e
-            })
-            .ok()?;
-
-        let updater_config: UpdaterConfig = config
-            .get("updater")
-            .map_err(|e| {
-                eprintln!(
-                    "[BUILD ERROR] Failed to parse [updater] section in '{}': {}",
-                    config_file_name, e
-                );
-                e
-            })
-            .ok()?;
-
-        Some(updater_config.runtime_latest_json_url)
-    }
-
-    fn download_runtime_artifact(
-        latest_json_url: &str,
-        target_path: &Path,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        println!(
-            "cargo:warning=Downloading simprint-runtime metadata from {}",
-            latest_json_url
-        );
-
-        let client = reqwest::blocking::Client::builder().build()?;
-        let manifest = client
-            .get(latest_json_url)
-            .send()?
-            .error_for_status()?
-            .json::<RuntimeLatestRelease>()?;
-
-        let target_triple = env::var("TARGET")?;
-        let platform = manifest.platforms.get(&target_triple).ok_or_else(|| {
-            format!(
-                "runtime latest.json does not contain target platform '{}'",
-                target_triple
-            )
-        })?;
-
-        if platform.url.trim().is_empty() {
-            return Err("runtime latest.json url is empty".into());
-        }
-
-        println!(
-            "cargo:warning=Downloading simprint-runtime binary from {}",
-            platform.url
-        );
-
-        let bytes = client.get(&platform.url).send()?.error_for_status()?.bytes()?;
-
-        let actual_sha256 = sha256_hex(&bytes);
-        if !actual_sha256.eq_ignore_ascii_case(&platform.sha256) {
-            return Err(format!(
-                "runtime sha256 mismatch: expected {}, actual {}",
-                platform.sha256, actual_sha256
-            )
-            .into());
-        }
-
-        fs::write(target_path, &bytes)?;
-        Ok(())
-    }
-
-    fn sha256_hex(bytes: &[u8]) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(bytes);
-        format!("{:x}", hasher.finalize())
-    }
-}
-
-// =============================================================================
-// 模块二：Webview 资源下载与解压
+// 模块一：Webview 资源下载与解压
 // =============================================================================
 
 mod webview_assets {

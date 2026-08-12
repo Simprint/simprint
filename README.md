@@ -118,8 +118,6 @@ Current high-value contribution areas include:
 
 Issues and pull requests are welcome. If you are interested in contributing on a longer horizon, please open an issue or discussion to introduce yourself and mention the areas you want to help maintain.
 
-Additional core components are also being prepared for broader collaboration over time, including the runtime process (`simprint-runtime`) and the browser-kernel layer (`simprint-browser-kernel`). The long-term goal is to build a maintainable open ecosystem around Simprint rather than keep contribution limited to the client surface.
-
 ## Friend Links
 
 - [LINUX DO - 新的理想型社区](https://linux.do/)

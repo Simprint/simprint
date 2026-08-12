@@ -161,7 +161,7 @@ mod tests {
     /// 测试加密流程
     #[test]
     fn test_login_payload_encrypt() {
-        use rsa::pkcs1::DecodeRsaPublicKey;
+        use crate::infrastructure::http::encryption::RsaSecret;
 
         let secret = AesSecret::new();
         let key = secret.get_key_as_base64();
@@ -184,19 +184,13 @@ mod tests {
         let json_bytes = serde_json::to_vec(&payload).expect("Serialization failed");
         let encrypted = secret.encrypt(&json_bytes).expect("Encryption failed");
 
-        // 下面连续的代码对应： crate::infrastructure::http::encryption::rsa::get_rsa_secret_instance()
-        let public_key_str =
-            std::fs::read("../../assets/secret/public_key.pem").expect("读取公钥失败");
-        let public_key = String::from_utf8(public_key_str).expect("转换公钥失败");
-        let public_key =
-            rsa::RsaPublicKey::from_pkcs1_pem(&public_key).expect("Failed to parse public key");
-        let mut rng = rsa::rand_core::OsRng::default();
-        let encrypted_data = public_key
-            .encrypt(&mut rng, rsa::Pkcs1v15Encrypt, key.as_bytes())
-            .expect("Failed to encrypt");
-
-        // 通过一个非对称公钥加密key
-        let encrypted_key = base64::engine::general_purpose::STANDARD.encode(&encrypted_data);
+        // 使用测试内生成的密钥对，避免依赖仓库外部的公钥文件。
+        let rsa_secret = RsaSecret::new().expect("生成 RSA 密钥对失败");
+        let public_key = rsa_secret.get_public_key().expect("编码 RSA 公钥失败");
+        let encrypted_key = RsaSecret::encrypt_with_public_key(key.as_bytes(), &public_key)
+            .expect("加密 AES 密钥失败");
+        let decrypted_key = rsa_secret.decrypt(&encrypted_key).expect("解密 AES 密钥失败");
+        assert_eq!(decrypted_key, key.as_bytes());
 
         let result = serde_json::json!({
             "data": encrypted,

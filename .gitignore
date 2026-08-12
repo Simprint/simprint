@@ -28,6 +28,8 @@ src/core/plugin/loader/plugin-imports.generated.ts
 
 # tauri generated files
 src-tauri/target
+src-tauri/crates/*/target/
+src-tauri/crates/*/Cargo.lock
 
 # packages
 packages

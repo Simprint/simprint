@@ -49,7 +49,6 @@ jobs:
           APP_SERVER_SECRET_KEY: ${{ secrets.APP_SERVER_SECRET_KEY }}
           APP_UPDATER_CHECK_URL: ${{ secrets.APP_UPDATER_CHECK_URL }}
           APP_UPDATER_LATEST_JSON_URL: ${{ secrets.APP_UPDATER_LATEST_JSON_URL }}
-          APP_RUNTIME_LATEST_JSON_URL: ${{ secrets.APP_RUNTIME_LATEST_JSON_URL }}
           APP_UPDATER_TEMP_DIR: ${{ secrets.APP_UPDATER_TEMP_DIR }}
           APP_WEBVIEW_DOWNLOAD_URL: ${{ secrets.APP_WEBVIEW_DOWNLOAD_URL }}
         run: |
@@ -82,7 +81,6 @@ jobs:
           Set-ConfigValue '^(secret_key\s*=\s*)".*"$' "${{ env.APP_SERVER_SECRET_KEY }}"
           Set-ConfigValue '^(check_url\s*=\s*)".*"$' "${{ env.APP_UPDATER_CHECK_URL }}"
           Set-ConfigValue '^(latest_json_url\s*=\s*)".*"$' "${{ env.APP_UPDATER_LATEST_JSON_URL }}"
-          Set-ConfigValue '^(runtime_latest_json_url\s*=\s*)".*"$' "${{ env.APP_RUNTIME_LATEST_JSON_URL }}"
           Set-ConfigValue '^(updater_temp_dir\s*=\s*)".*"$' "${{ env.APP_UPDATER_TEMP_DIR }}"
           Set-ConfigValue '^(downlaod_url\s*=\s*)".*"$' "${{ env.APP_WEBVIEW_DOWNLOAD_URL }}"
 

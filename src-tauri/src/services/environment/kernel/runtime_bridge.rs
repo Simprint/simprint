@@ -34,7 +34,8 @@ pub async fn launch_environment(
     extensions: Option<Vec<super::types::ExtensionInfo>>,
     status_emitter: Option<KernelStatusEmitter>,
 ) -> Result<()> {
-    let request = prepare_start_request(
+    let env_id = env_uuid.trim().to_string();
+    let request = match prepare_start_request(
         app,
         exe_path,
         env_uuid,
@@ -45,14 +46,28 @@ pub async fn launch_environment(
         fingerprint_config,
         accounts,
         extensions,
-        status_emitter,
+        status_emitter.clone(),
     )
-    .await?;
+    .await
+    {
+        Ok(request) => request,
+        Err(error) => {
+            mark_launch_error(&env_id, status_emitter.as_ref(), &error.to_string()).await;
+            return Err(error);
+        }
+    };
 
-    let response = AppContext::get()
+    let response = match AppContext::get()
         .simprint_runtime_manager
         .send_environment_command(EnvironmentCommandRequest::StartEnvironment { request })
-        .await?;
+        .await
+    {
+        Ok(response) => response,
+        Err(error) => {
+            mark_launch_error(&env_id, status_emitter.as_ref(), &error.to_string()).await;
+            return Err(error);
+        }
+    };
 
     match response {
         EnvironmentCommandResponse::Ack | EnvironmentCommandResponse::Started { .. } => Ok(()),
@@ -66,19 +81,32 @@ pub async fn batch_launch_environments(
     status_emitter: Option<KernelStatusEmitter>,
 ) -> Result<Vec<BatchLaunchResult>> {
     let requests = try_join_all(launch_requests.into_iter().map(|request| {
-        prepare_start_request(
-            app.clone(),
-            request.exe_path,
-            request.env_uuid,
-            request.cache_path,
-            request.cookies,
-            request.urls,
-            request.proxy,
-            request.fingerprint_config,
-            request.accounts,
-            request.extensions,
-            status_emitter.clone(),
-        )
+        let app = app.clone();
+        let status_emitter = status_emitter.clone();
+        async move {
+            let env_id = request.env_uuid.trim().to_string();
+            match prepare_start_request(
+                app,
+                request.exe_path,
+                request.env_uuid,
+                request.cache_path,
+                request.cookies,
+                request.urls,
+                request.proxy,
+                request.fingerprint_config,
+                request.accounts,
+                request.extensions,
+                status_emitter.clone(),
+            )
+            .await
+            {
+                Ok(request) => Ok(request),
+                Err(error) => {
+                    mark_launch_error(&env_id, status_emitter.as_ref(), &error.to_string()).await;
+                    Err(error)
+                }
+            }
+        }
     }))
     .await?;
 
@@ -89,10 +117,42 @@ pub async fn batch_launch_environments(
 
     match response {
         EnvironmentCommandResponse::BatchLaunchResults { results } => {
+            for result in &results {
+                if !result.success {
+                    mark_launch_error(
+                        &result.env_uuid,
+                        status_emitter.as_ref(),
+                        result.error.as_deref().unwrap_or("浏览器启动失败"),
+                    )
+                    .await;
+                }
+            }
             Ok(results.into_iter().map(map_batch_launch_result).collect())
         }
         other => Err(format!("simprint-runtime 返回了非预期响应: {:?}", other).into()),
     }
+}
+
+async fn mark_launch_error(
+    env_uuid: &str,
+    status_emitter: Option<&KernelStatusEmitter>,
+    message: &str,
+) {
+    if let Some(ctx) = AppContext::try_get() {
+        ctx.env_status_manager.set_status(env_uuid, EnvironmentStatus::Error).await;
+        ctx.env_position_manager.release_position(env_uuid).await;
+    }
+
+    emit_status(
+        status_emitter,
+        &Some(env_uuid.to_string()),
+        "",
+        EnvironmentStatus::Error,
+        Some(message),
+        None,
+        None,
+        None,
+    );
 }
 
 pub async fn stop_environment(env_uuid: String) -> Result<()> {

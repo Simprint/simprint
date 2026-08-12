@@ -73,19 +73,5 @@ fn validate_updater_config(config: &AppConfig) -> Result<()> {
         ));
     }
 
-    if config.updater.runtime_latest_json_url.is_empty() {
-        return Err(Error::ConfigValidationFailed(
-            "updater.runtime_latest_json_url cannot be empty".to_string(),
-        ));
-    }
-
-    if !config.updater.runtime_latest_json_url.starts_with("http://")
-        && !config.updater.runtime_latest_json_url.starts_with("https://")
-    {
-        return Err(Error::ConfigValidationFailed(
-            "updater.runtime_latest_json_url must start with http:// or https://".to_string(),
-        ));
-    }
-
     Ok(())
 }

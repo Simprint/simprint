@@ -4680,6 +4680,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "runtime"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "log",
+ "rand 0.8.5",
+ "reqwest",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+ "tokio",
+ "windows 0.61.3",
+]
+
+[[package]]
 name = "rust-ini"
 version = "0.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5233,6 +5250,7 @@ dependencies = [
  "rmcp",
  "rmp-serde",
  "rsa",
+ "runtime",
  "schemars 1.2.0",
  "serde",
  "serde_bytes",

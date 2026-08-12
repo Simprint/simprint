@@ -6,7 +6,6 @@ secret_key = "Nuexz9Y2hRc5Z6HK7Atb"
 [updater]
 check_url = "https://update.simprint.app/api/v1/versions/check"
 latest_json_url = "https://pub-39307a5e69c74324855a762027cbf9bf.r2.dev/latest.json"
-runtime_latest_json_url = "https://pub-d9427ecc5980437ba1445fc79ea593bd.r2.dev/simprint-runtime/latest.json"
 updater_temp_dir = "updates"
 
 [webview]

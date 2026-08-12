@@ -20,7 +20,6 @@ pub struct ServerConfig {
 pub struct UpdaterConfig {
     pub check_url: String,
     pub latest_json_url: String,
-    pub runtime_latest_json_url: String,
 
     /// 下载的临时目录（可选）。
     /// - 若为空：默认使用统一根目录下的 `updates`

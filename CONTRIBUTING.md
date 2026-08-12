@@ -90,7 +90,7 @@ Current high-value contribution areas include:
 - Frontend UX polish and workflow consistency
 - Tests, regression coverage, and release verification
 
-Broader collaboration around additional core components is planned over time, including the runtime process (`simprint-runtime`) and the browser-kernel layer (`simprint-browser-kernel`). For now, contributions to this public repository are still highly valuable and help make the overall ecosystem easier to maintain.
+The environment runtime is maintained in this repository under `src-tauri/crates/runtime`; the browser-kernel layer (`simprint-browser-kernel`) remains a separate component. Changes to environment lifecycle behavior should include tests in the embedded runtime crate whenever possible.
 
 ## Communication
 

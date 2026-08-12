@@ -19,9 +19,6 @@
   "bundle": {
     "active": true,
     "targets": "nsis",
-    "resources": {
-      "resources/simprint-runtime.exe": "simprint-runtime.exe"
-    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

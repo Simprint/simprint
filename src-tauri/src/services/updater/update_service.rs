@@ -8,7 +8,6 @@ use crate::infrastructure::updater::types::{
     FoundUpdatesPayload, InstallStrategy, LatestRelease, NoUpdatesPayload, UpdateEvent,
 };
 use crate::infrastructure::updater::{checker, downloader, planner, service, verifier};
-use crate::services::runtime_updater::RuntimeUpdateService;
 use crate::services::updater::types::PreparedUpdateInfo;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -54,10 +53,6 @@ fn map_update_check_error(stage: &str, err: impl std::fmt::Display) -> Error {
 
 impl UpdateService {
     pub async fn get_prepared_update() -> Result<Option<PreparedUpdateInfo>> {
-        if let Some(update) = RuntimeUpdateService::peek_prepared_update().await? {
-            return Ok(Some(update));
-        }
-
         Ok(None)
     }
 
@@ -73,10 +68,12 @@ impl UpdateService {
                 .ok_or("当前没有可安装的更新")?,
         };
 
-        match resolved_kind.as_str() {
-            "runtime" => RuntimeUpdateService::start_prepared_install(app_handle).await,
-            _ => Err(format!("不支持的更新类型: {}", resolved_kind).into()),
-        }
+        let _ = app_handle;
+        Err(format!(
+            "不支持独立更新组件: {}。环境运行时现已内嵌到 Simprint，请更新主程序。",
+            resolved_kind
+        )
+        .into())
     }
 
     /// 简单检查是否有可用更新（仅检查，不缓存计划，不发送事件）
