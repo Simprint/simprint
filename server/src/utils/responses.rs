@@ -63,7 +63,14 @@ impl<T> Response<T> {
 // 允许直接打印和to_string
 impl<T> Display for Response<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
+        write!(
+            f,
+            "Response {{ status_code: {}, code: {}, message: {:?}, has_data: {} }}",
+            self.status_code,
+            self.code,
+            self.message,
+            self.data.is_some()
+        )
     }
 }
 
@@ -100,5 +107,20 @@ impl From<MultipartError> for Response<()> {
             Some(format!("请求参数错误: {:?}", value.body_text()).as_ref()),
             value.status(),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Response;
+
+    #[test]
+    fn display_response_without_recursion() {
+        let response = Response::success(Some("ok"), Some(42));
+
+        assert_eq!(
+            response.to_string(),
+            "Response { status_code: 200, code: 1, message: Some(\"ok\"), has_data: true }"
+        );
     }
 }
