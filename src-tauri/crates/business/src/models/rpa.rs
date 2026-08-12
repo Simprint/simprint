@@ -1,7 +1,7 @@
-﻿use sqlx::Error;
+use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool, placeholders};
+use crate::database::{Db, Pool, placeholders};
 
 use crate::dto::{RpaTaskDto, RpaTaskEnvironmentDto, RpaTaskRunDto, RpaTaskStepDto};
 
@@ -9,7 +9,7 @@ use crate::dto::{RpaTaskDto, RpaTaskEnvironmentDto, RpaTaskRunDto, RpaTaskStepDt
 
 /// 创建 RPA 任务
 pub async fn insert_rpa_task(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     team_uuid: Option<Uuid>,
     name: &str,
@@ -60,7 +60,7 @@ pub async fn insert_rpa_task(
 
 /// 查询 RPA 任务列表
 pub async fn fetch_rpa_tasks(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Option<Uuid>,
     user_uuid: Uuid,
     keyword: Option<&str>,
@@ -101,7 +101,7 @@ pub async fn fetch_rpa_tasks(
 
 /// 查询 RPA 任务总数
 pub async fn fetch_rpa_tasks_count(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Option<Uuid>,
     user_uuid: Uuid,
     keyword: Option<&str>,
@@ -131,7 +131,7 @@ pub async fn fetch_rpa_tasks_count(
 
 /// 根据 UUID 查询 RPA 任务
 pub async fn fetch_rpa_task_by_uuid(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     task_uuid: Uuid,
 ) -> Result<Option<RpaTaskDto>, Error> {
     let rec = sqlx::query_as::<_, RpaTaskDto>(
@@ -154,7 +154,7 @@ pub async fn fetch_rpa_task_by_uuid(
 
 /// 更新 RPA 任务
 pub async fn update_rpa_task(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     task_uuid: Uuid,
     name: Option<&str>,
     description: Option<&str>,
@@ -215,7 +215,7 @@ pub async fn update_rpa_task(
 
 /// 更新任务状态
 pub async fn update_rpa_task_status(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     task_uuid: Uuid,
     status: &str,
 ) -> Result<(), Error> {
@@ -235,7 +235,7 @@ pub async fn update_rpa_task_status(
 }
 
 /// 软删除 RPA 任务
-pub async fn delete_rpa_task(pool: &Pool<Postgres>, task_uuid: Uuid) -> Result<(), Error> {
+pub async fn delete_rpa_task(pool: &Pool<Db>, task_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE rpa_tasks SET deleted_at = CURRENT_TIMESTAMP
@@ -251,7 +251,7 @@ pub async fn delete_rpa_task(pool: &Pool<Postgres>, task_uuid: Uuid) -> Result<(
 
 /// 批量软删除 RPA 任务
 pub async fn batch_delete_rpa_tasks(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     task_uuids: &[Uuid],
 ) -> Result<u64, Error> {
     if task_uuids.is_empty() {
@@ -278,7 +278,7 @@ pub async fn batch_delete_rpa_tasks(
 
 /// 插入任务步骤
 pub async fn insert_rpa_task_step(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     task_uuid: Uuid,
     step_type: &str,
     name: &str,
@@ -316,7 +316,7 @@ pub async fn insert_rpa_task_step(
 
 /// 查询任务步骤列表
 pub async fn fetch_rpa_task_steps(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     task_uuid: Uuid,
 ) -> Result<Vec<RpaTaskStepDto>, Error> {
     let recs = sqlx::query_as::<_, RpaTaskStepDto>(
@@ -337,7 +337,7 @@ pub async fn fetch_rpa_task_steps(
 }
 
 /// 删除任务所有步骤
-pub async fn delete_rpa_task_steps(pool: &Pool<Postgres>, task_uuid: Uuid) -> Result<(), Error> {
+pub async fn delete_rpa_task_steps(pool: &Pool<Db>, task_uuid: Uuid) -> Result<(), Error> {
     sqlx::query("DELETE FROM rpa_task_steps WHERE task_uuid = $1")
         .bind(task_uuid)
         .execute(pool)
@@ -350,7 +350,7 @@ pub async fn delete_rpa_task_steps(pool: &Pool<Postgres>, task_uuid: Uuid) -> Re
 
 /// 添加任务环境关联
 pub async fn insert_rpa_task_environment(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     task_uuid: Uuid,
     environment_uuid: Uuid,
     sort_order: Option<i32>,
@@ -373,7 +373,7 @@ pub async fn insert_rpa_task_environment(
 
 /// 查询任务环境关联
 pub async fn fetch_rpa_task_environments(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     task_uuid: Uuid,
 ) -> Result<Vec<RpaTaskEnvironmentDto>, Error> {
     let recs = sqlx::query_as::<_, RpaTaskEnvironmentDto>(
@@ -393,7 +393,7 @@ pub async fn fetch_rpa_task_environments(
 
 /// 删除任务所有环境关联
 pub async fn delete_rpa_task_environments(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     task_uuid: Uuid,
 ) -> Result<(), Error> {
     sqlx::query("DELETE FROM rpa_task_environments WHERE task_uuid = $1")
@@ -408,7 +408,7 @@ pub async fn delete_rpa_task_environments(
 
 /// 创建任务执行记录
 pub async fn insert_rpa_task_run(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     task_uuid: Uuid,
     total_steps: i32,
 ) -> Result<Uuid, Error> {
@@ -442,7 +442,7 @@ pub async fn insert_rpa_task_run(
 
 /// 查询任务执行记录列表
 pub async fn fetch_rpa_task_runs(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     task_uuid: Uuid,
     status: Option<&str>,
     offset: i64,
@@ -471,7 +471,7 @@ pub async fn fetch_rpa_task_runs(
 
 /// 查询任务执行记录总数
 pub async fn fetch_rpa_task_runs_count(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     task_uuid: Uuid,
     status: Option<&str>,
 ) -> Result<i64, Error> {
@@ -492,7 +492,7 @@ pub async fn fetch_rpa_task_runs_count(
 
 /// 根据 UUID 查询执行记录
 pub async fn fetch_rpa_task_run_by_uuid(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     run_uuid: Uuid,
 ) -> Result<Option<RpaTaskRunDto>, Error> {
     let rec = sqlx::query_as::<_, RpaTaskRunDto>(
@@ -512,7 +512,7 @@ pub async fn fetch_rpa_task_run_by_uuid(
 
 /// 更新执行记录状态
 pub async fn update_rpa_task_run_status(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     run_uuid: Uuid,
     status: &str,
     completed_steps: i32,
@@ -546,5 +546,3 @@ pub async fn update_rpa_task_run_status(
 
     Ok(())
 }
-
-

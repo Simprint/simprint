@@ -1,14 +1,14 @@
 use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool};
+use crate::database::{Db, Pool};
 
 use crate::dto::WorkspaceDto;
 use crate::entitys::CreateWorkspaceRequest;
 
 /// 创建工作空间
 pub async fn insert_workspace(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     owner_uuid: Uuid,
     payload: &CreateWorkspaceRequest,
 ) -> Result<Uuid, Error> {
@@ -30,7 +30,7 @@ pub async fn insert_workspace(
 
 /// 根据 UUID 查询工作空间
 pub async fn fetch_workspace_by_uuid(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
 ) -> Result<Option<WorkspaceDto>, Error> {
     let rec = sqlx::query_as::<_, WorkspaceDto>(
@@ -49,7 +49,7 @@ pub async fn fetch_workspace_by_uuid(
 
 /// 查询用户所属的所有工作空间
 pub async fn fetch_user_workspaces(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
 ) -> Result<Vec<WorkspaceDto>, Error> {
     let recs = sqlx::query_as::<_, WorkspaceDto>(
@@ -69,7 +69,7 @@ pub async fn fetch_user_workspaces(
 
 /// 更新工作空间
 pub async fn update_workspace(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     name: Option<&str>,
 ) -> Result<(), Error> {
@@ -89,7 +89,7 @@ pub async fn update_workspace(
 }
 
 /// 删除工作空间（软删除）
-pub async fn delete_workspace(pool: &Pool<Postgres>, workspace_uuid: Uuid) -> Result<(), Error> {
+pub async fn delete_workspace(pool: &Pool<Db>, workspace_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE workspaces SET deleted_at = CURRENT_TIMESTAMP WHERE uuid = $1
@@ -104,7 +104,7 @@ pub async fn delete_workspace(pool: &Pool<Postgres>, workspace_uuid: Uuid) -> Re
 
 /// 检查用户是否是工作空间所有者
 pub async fn check_workspace_owner(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     user_uuid: Uuid,
 ) -> Result<bool, Error> {

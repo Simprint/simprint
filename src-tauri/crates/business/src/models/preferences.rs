@@ -1,13 +1,13 @@
 use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool};
+use crate::database::{Db, Pool};
 
 use crate::dto::UserPreferenceDto;
 
 /// 获取用户偏好设置
 pub async fn fetch_user_preferences(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
 ) -> Result<Option<UserPreferenceDto>, Error> {
     let rec = sqlx::query_as::<_, UserPreferenceDto>(
@@ -26,7 +26,7 @@ pub async fn fetch_user_preferences(
 
 /// 创建或更新用户偏好设置
 pub async fn upsert_user_preferences(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     theme: Option<&str>,
     language: Option<&str>,

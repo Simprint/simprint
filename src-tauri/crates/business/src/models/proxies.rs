@@ -1,13 +1,13 @@
 use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool, placeholders};
+use crate::database::{Db, Pool, placeholders};
 
 use crate::dto::{ProxyDto, ProxyHealthCheckDto};
 
 /// 创建代理
 pub async fn insert_proxy(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     owner_uuid: Uuid,
     name: &str,
@@ -45,7 +45,7 @@ pub async fn insert_proxy(
 
 /// 查询代理列表
 pub async fn fetch_proxies(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     proxy_type: Option<&str>,
     status: Option<&str>,
@@ -81,7 +81,7 @@ pub async fn fetch_proxies(
 
 /// 查询代理总数
 pub async fn fetch_proxies_count(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     proxy_type: Option<&str>,
     status: Option<&str>,
@@ -106,7 +106,7 @@ pub async fn fetch_proxies_count(
 
 /// 根据 UUID 查询代理
 pub async fn fetch_proxy_by_uuid(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     proxy_uuid: Uuid,
 ) -> Result<Option<ProxyDto>, Error> {
     let rec = sqlx::query_as::<_, ProxyDto>(
@@ -129,7 +129,7 @@ pub async fn fetch_proxy_by_uuid(
 
 /// 更新代理
 pub async fn update_proxy(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     proxy_uuid: Uuid,
     name: Option<&str>,
     host: Option<&str>,
@@ -171,7 +171,7 @@ pub async fn update_proxy(
 
 /// 更新代理检测结果
 pub async fn update_proxy_check_result(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     proxy_uuid: Uuid,
     status: &str,
     latency: Option<i32>,
@@ -204,7 +204,7 @@ pub async fn update_proxy_check_result(
 }
 
 /// 增加代理使用次数
-pub async fn increment_proxy_usage(pool: &Pool<Postgres>, proxy_uuid: Uuid) -> Result<(), Error> {
+pub async fn increment_proxy_usage(pool: &Pool<Db>, proxy_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE proxies SET usage_count = usage_count + 1
@@ -219,7 +219,7 @@ pub async fn increment_proxy_usage(pool: &Pool<Postgres>, proxy_uuid: Uuid) -> R
 }
 
 /// 软删除代理
-pub async fn delete_proxy(pool: &Pool<Postgres>, proxy_uuid: Uuid) -> Result<(), Error> {
+pub async fn delete_proxy(pool: &Pool<Db>, proxy_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE proxies SET deleted_at = CURRENT_TIMESTAMP
@@ -235,7 +235,7 @@ pub async fn delete_proxy(pool: &Pool<Postgres>, proxy_uuid: Uuid) -> Result<(),
 
 /// 批量软删除代理
 pub async fn batch_delete_proxies(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     proxy_uuids: &[Uuid],
 ) -> Result<u64, Error> {
     if proxy_uuids.is_empty() {
@@ -262,7 +262,7 @@ pub async fn batch_delete_proxies(
 
 /// 记录代理健康检查
 pub async fn insert_proxy_health_check(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     proxy_uuid: Uuid,
     status: &str,
     latency: Option<i32>,
@@ -289,7 +289,7 @@ pub async fn insert_proxy_health_check(
 
 /// 查询代理健康检查历史
 pub async fn fetch_proxy_health_checks(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     proxy_uuid: Uuid,
     limit: i64,
 ) -> Result<Vec<ProxyHealthCheckDto>, Error> {

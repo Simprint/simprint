@@ -1,13 +1,13 @@
 use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool};
+use crate::database::{Db, Pool};
 
 use crate::dto::AuditLogDto;
 
 /// 记录审计日志
 pub async fn insert_audit_log(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     team_uuid: Option<Uuid>,
     action: &str,
@@ -51,7 +51,7 @@ pub async fn insert_audit_log(
 /// - 当前团队的所有审计日志
 /// - 加上当前用户的个人操作日志（team_uuid 为空的，如登录、注册等）
 pub async fn fetch_audit_logs(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     current_user_uuid: Uuid,
     team_uuid: Option<Uuid>,
     user_uuid_filter: Option<Uuid>,
@@ -97,7 +97,7 @@ pub async fn fetch_audit_logs(
 
 /// 查询审计日志总数
 pub async fn fetch_audit_logs_count(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     current_user_uuid: Uuid,
     team_uuid: Option<Uuid>,
     user_uuid_filter: Option<Uuid>,
@@ -132,7 +132,7 @@ pub async fn fetch_audit_logs_count(
 
 /// 根据 UUID 查询审计日志
 pub async fn fetch_audit_log_by_uuid(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     log_uuid: Uuid,
 ) -> Result<Option<AuditLogDto>, Error> {
     let rec = sqlx::query_as::<_, AuditLogDto>(
@@ -155,7 +155,7 @@ pub async fn fetch_audit_log_by_uuid(
 
 /// 查询指定日期的审计日志数量
 pub async fn fetch_audit_logs_count_by_date(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Option<Uuid>,
     date: chrono::NaiveDate,
 ) -> Result<i64, Error> {
@@ -176,7 +176,7 @@ pub async fn fetch_audit_logs_count_by_date(
 
 /// 查询指定日期之后的审计日志数量
 pub async fn fetch_audit_logs_count_since_date(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Option<Uuid>,
     since_date: chrono::NaiveDate,
 ) -> Result<i64, Error> {
@@ -197,7 +197,7 @@ pub async fn fetch_audit_logs_count_since_date(
 
 /// 查询热门操作类型
 pub async fn fetch_top_actions(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Option<Uuid>,
     limit: i64,
 ) -> Result<Vec<(String, i64)>, Error> {
@@ -220,7 +220,7 @@ pub async fn fetch_top_actions(
 
 /// 查询热门目标类型
 pub async fn fetch_top_target_types(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Option<Uuid>,
     limit: i64,
 ) -> Result<Vec<(String, i64)>, Error> {

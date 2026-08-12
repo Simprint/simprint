@@ -1,7 +1,7 @@
 use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool};
+use crate::database::{Db, Pool};
 
 use crate::dto::{MessageDto, UserMessageDto};
 
@@ -9,7 +9,7 @@ use crate::dto::{MessageDto, UserMessageDto};
 
 /// 创建消息
 pub async fn create_message(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     sender_uuid: Option<Uuid>,
     message_type: &str,
     title: &str,
@@ -44,7 +44,7 @@ pub async fn create_message(
 
 /// 添加消息接收者
 pub async fn add_message_recipient(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     message_uuid: Uuid,
     user_uuid: Uuid,
     action_status: Option<&str>,
@@ -67,7 +67,7 @@ pub async fn add_message_recipient(
 
 /// 批量添加消息接收者
 pub async fn add_message_recipients(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     message_uuid: Uuid,
     user_uuids: &[Uuid],
     action_status: Option<&str>,
@@ -96,7 +96,7 @@ pub async fn add_message_recipients(
 
 /// 查询用户消息列表
 pub async fn fetch_user_messages(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     offset: i64,
     limit: i64,
@@ -107,7 +107,7 @@ pub async fn fetch_user_messages(
 ) -> Result<Vec<UserMessageDto>, Error> {
     let mut query = String::from(
         r#"
-        SELECT 
+        SELECT
             m.uuid AS message_uuid,
             m.message_type,
             m.title,
@@ -186,7 +186,7 @@ pub async fn fetch_user_messages(
 
 /// 查询用户消息总数
 pub async fn fetch_user_messages_count(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     message_type: Option<&str>,
     is_read: Option<bool>,
@@ -247,7 +247,7 @@ pub async fn fetch_user_messages_count(
 
 /// 标记消息为已读
 pub async fn mark_message_read(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     message_uuid: Uuid,
     user_uuid: Uuid,
 ) -> Result<(), Error> {
@@ -268,7 +268,7 @@ pub async fn mark_message_read(
 
 /// 批量标记消息为已读
 pub async fn batch_mark_messages_read(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     message_uuids: &[Uuid],
     user_uuid: Uuid,
 ) -> Result<(), Error> {
@@ -295,7 +295,7 @@ pub async fn batch_mark_messages_read(
 
 /// 处理消息（接受/拒绝）
 pub async fn handle_message(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     message_uuid: Uuid,
     user_uuid: Uuid,
     action: &str,
@@ -324,7 +324,7 @@ pub async fn handle_message(
 
 /// 获取用户消息统计
 pub async fn fetch_user_message_stats(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
 ) -> Result<(i64, i64, std::collections::HashMap<String, i64>), Error> {
     // 总消息数
@@ -376,7 +376,7 @@ pub async fn fetch_user_message_stats(
 }
 
 /// 删除消息（软删除）
-pub async fn delete_message(pool: &Pool<Postgres>, message_uuid: Uuid) -> Result<(), Error> {
+pub async fn delete_message(pool: &Pool<Db>, message_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE messages
@@ -393,7 +393,7 @@ pub async fn delete_message(pool: &Pool<Postgres>, message_uuid: Uuid) -> Result
 
 /// 根据 UUID 查询消息
 pub async fn fetch_message_by_uuid(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     message_uuid: Uuid,
 ) -> Result<Option<MessageDto>, Error> {
     let rec = sqlx::query_as::<_, MessageDto>(

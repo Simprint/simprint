@@ -1,13 +1,13 @@
 use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool};
+use crate::database::{Db, Pool};
 
 use crate::dto::{LocalApiPermissionDefinitionDto, UserDto, UserInfoDto};
 use crate::entitys::{RegisterRequest, UpdateUserRequest};
 
 /// 插入用户基础信息
-pub async fn insert_user(pool: &Pool<Postgres>, user_id: String) -> Result<Uuid, Error> {
+pub async fn insert_user(pool: &Pool<Db>, user_id: String) -> Result<Uuid, Error> {
     let uuid: Uuid = sqlx::query_scalar("INSERT INTO users (id) VALUES ($1) RETURNING uuid;")
         .bind(user_id)
         .fetch_one(pool)
@@ -18,7 +18,7 @@ pub async fn insert_user(pool: &Pool<Postgres>, user_id: String) -> Result<Uuid,
 
 /// 插入用户详细信息
 pub async fn insert_user_info(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     payload: &RegisterRequest,
     password_hash: &str,
@@ -46,7 +46,7 @@ pub async fn insert_user_info(
 /// - user_preferences: 用户偏好设置
 /// - teams: 个人团队（每个用户自动创建一个团队）
 pub async fn create_user_with_info(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_id: String,
     payload: &RegisterRequest,
     password_hash: &str,
@@ -213,7 +213,7 @@ pub async fn create_user_with_info(
 }
 
 async fn insert_local_api_permissions(
-    tx: &mut sqlx::Transaction<'_, Postgres>,
+    tx: &mut sqlx::Transaction<'_, Db>,
     api_key_id: i32,
     definitions: &[LocalApiPermissionDefinitionDto],
 ) -> Result<(), Error> {
@@ -247,7 +247,7 @@ fn generate_local_api_key() -> String {
 
 /// 根据 UUID 查询用户
 pub async fn fetch_user_by_uuid(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
 ) -> Result<Option<UserDto>, Error> {
     let rec = sqlx::query_as::<_, UserDto>(
@@ -266,7 +266,7 @@ pub async fn fetch_user_by_uuid(
 
 /// 查询用户详细信息
 pub async fn fetch_user_info_by_uuid(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
 ) -> Result<Option<UserInfoDto>, Error> {
     let rec = sqlx::query_as::<_, UserInfoDto>(
@@ -286,7 +286,7 @@ pub async fn fetch_user_info_by_uuid(
 
 /// 根据邮箱查询用户详细信息
 pub async fn fetch_user_info_by_email(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     email: &str,
 ) -> Result<Option<UserInfoDto>, Error> {
     let rec = sqlx::query_as::<_, UserInfoDto>(
@@ -306,7 +306,7 @@ pub async fn fetch_user_info_by_email(
 
 /// 更新用户信息
 pub async fn update_user_info(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     payload: &UpdateUserRequest,
 ) -> Result<(), Error> {
@@ -332,7 +332,7 @@ pub async fn update_user_info(
 
 /// 更新密码
 pub async fn update_password(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     password_hash: &str,
 ) -> Result<(), Error> {
@@ -353,7 +353,7 @@ pub async fn update_password(
 
 /// 设置用户当前工作空间
 pub async fn fetch_user_current_workspace(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
 ) -> Result<Option<Uuid>, Error> {
     let rec: Option<Uuid> = sqlx::query_scalar(
@@ -370,7 +370,7 @@ pub async fn fetch_user_current_workspace(
 }
 
 pub async fn set_user_current_workspace(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     workspace_uuid: Uuid,
 ) -> Result<(), Error> {
@@ -388,7 +388,7 @@ pub async fn set_user_current_workspace(
 }
 
 pub async fn set_user_current_workspace_and_team(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     workspace_uuid: Uuid,
     team_uuid: Uuid,

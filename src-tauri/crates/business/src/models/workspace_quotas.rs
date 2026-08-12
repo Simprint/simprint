@@ -1,13 +1,13 @@
 use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool};
+use crate::database::{Db, Pool};
 
 use crate::dto::WorkspaceQuotaDto;
 
 /// 创建或更新工作空间配额
 pub async fn insert_or_update_workspace_quota(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     max_environments: i32,
     max_team_members: i32,
@@ -41,7 +41,7 @@ pub async fn insert_or_update_workspace_quota(
 
 /// 查询工作空间配额
 pub async fn fetch_workspace_quota(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
 ) -> Result<Option<WorkspaceQuotaDto>, Error> {
     let rec = sqlx::query_as::<_, WorkspaceQuotaDto>(
@@ -64,7 +64,7 @@ pub async fn fetch_workspace_quota(
 
 /// 增加环境使用数
 pub async fn increment_used_environments(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     amount: i32,
 ) -> Result<(), Error> {
@@ -86,7 +86,7 @@ pub async fn increment_used_environments(
 
 /// 减少环境使用数
 pub async fn decrement_used_environments(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     amount: i32,
 ) -> Result<(), Error> {
@@ -108,7 +108,7 @@ pub async fn decrement_used_environments(
 
 /// 增加代理使用数
 pub async fn increment_used_proxies(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     amount: i32,
 ) -> Result<(), Error> {
@@ -130,7 +130,7 @@ pub async fn increment_used_proxies(
 
 /// 减少代理使用数
 pub async fn decrement_used_proxies(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     amount: i32,
 ) -> Result<(), Error> {
@@ -152,7 +152,7 @@ pub async fn decrement_used_proxies(
 
 /// 更新团队成员使用数（统计所有团队的活跃成员）
 pub async fn update_used_team_members(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
 ) -> Result<(), Error> {
     sqlx::query(
@@ -179,7 +179,7 @@ pub async fn update_used_team_members(
 
 /// 检查配额是否充足
 pub async fn check_quota(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     quota_type: &str,
 ) -> Result<bool, Error> {

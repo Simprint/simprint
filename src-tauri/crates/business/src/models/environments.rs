@@ -1,7 +1,7 @@
 use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool, placeholders};
+use crate::database::{Db, Pool, placeholders};
 
 use crate::dto::{
     EnvironmentAccountRowDto, EnvironmentConfigDto, EnvironmentCookieDto, EnvironmentDto,
@@ -14,7 +14,7 @@ use crate::entitys::CookieInput;
 
 /// 创建分组
 pub async fn insert_group(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     team_uuid: Uuid,
     name: &str,
@@ -41,7 +41,7 @@ pub async fn insert_group(
 
 /// 查询分组列表（工作空间级别）
 pub async fn fetch_groups(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     team_uuid: Uuid,
     offset: i64,
@@ -74,7 +74,7 @@ pub async fn fetch_groups(
 
 /// 根据 UUID 查询分组
 pub async fn fetch_group_by_uuid(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     group_uuid: Uuid,
 ) -> Result<Option<GroupDto>, Error> {
     let rec = sqlx::query_as::<_, GroupDto>(
@@ -99,7 +99,7 @@ pub async fn fetch_group_by_uuid(
 
 /// 更新分组
 pub async fn update_group(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     group_uuid: Uuid,
     name: Option<&str>,
     description: Option<&str>,
@@ -125,7 +125,7 @@ pub async fn update_group(
 }
 
 /// 软删除分组
-pub async fn delete_group(pool: &Pool<Postgres>, group_uuid: Uuid) -> Result<(), Error> {
+pub async fn delete_group(pool: &Pool<Db>, group_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE groups SET deleted_at = CURRENT_TIMESTAMP
@@ -143,7 +143,7 @@ pub async fn delete_group(pool: &Pool<Postgres>, group_uuid: Uuid) -> Result<(),
 
 /// 创建标签
 pub async fn insert_tag(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     team_uuid: Option<Uuid>,
     name: &str,
@@ -168,7 +168,7 @@ pub async fn insert_tag(
 
 /// 查询标签列表
 pub async fn fetch_tags(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Option<Uuid>,
     user_uuid: Uuid,
 ) -> Result<Vec<TagDto>, Error> {
@@ -192,7 +192,7 @@ pub async fn fetch_tags(
 
 /// 根据 UUID 查询标签
 pub async fn fetch_tag_by_uuid(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     tag_uuid: Uuid,
 ) -> Result<Option<TagDto>, Error> {
     let rec = sqlx::query_as::<_, TagDto>(
@@ -212,7 +212,7 @@ pub async fn fetch_tag_by_uuid(
 
 /// 更新标签
 pub async fn update_tag(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     tag_uuid: Uuid,
     name: Option<&str>,
     color: Option<&str>,
@@ -238,7 +238,7 @@ pub async fn update_tag(
 }
 
 /// 软删除标签
-pub async fn delete_tag(pool: &Pool<Postgres>, tag_uuid: Uuid) -> Result<(), Error> {
+pub async fn delete_tag(pool: &Pool<Db>, tag_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE tags SET deleted_at = CURRENT_TIMESTAMP
@@ -256,7 +256,7 @@ pub async fn delete_tag(pool: &Pool<Postgres>, tag_uuid: Uuid) -> Result<(), Err
 
 /// 创建环境
 pub async fn insert_environment(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     user_uuid: Uuid,
     team_uuid: Uuid,
@@ -292,7 +292,7 @@ pub async fn insert_environment(
 
 /// 查询环境列表（基础信息）
 pub async fn fetch_environments_base(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     team_uuid: Uuid,
     group_uuid: Option<Uuid>,
@@ -405,7 +405,7 @@ pub async fn fetch_environments_base(
 
 /// 查询环境列表（基础）
 pub async fn fetch_environments(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     team_uuid: Uuid,
     group_uuid: Option<Uuid>,
@@ -441,7 +441,7 @@ pub async fn fetch_environments(
 
 /// 查询环境总数
 pub async fn fetch_environments_count(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     team_uuid: Uuid,
     group_uuid: Option<Uuid>,
@@ -536,7 +536,7 @@ pub async fn fetch_environments_count(
 
 /// 根据 UUID 查询环境（不带工作空间过滤，用于内部查询）
 pub async fn fetch_environment_by_uuid_unfiltered(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
 ) -> Result<Option<EnvironmentDto>, Error> {
     let rec = sqlx::query_as::<_, EnvironmentDto>(
@@ -557,7 +557,7 @@ pub async fn fetch_environment_by_uuid_unfiltered(
 
 /// 根据 UUID 查询环境（带工作空间过滤）
 pub async fn fetch_environment_by_uuid(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     env_uuid: Uuid,
 ) -> Result<Option<EnvironmentDto>, Error> {
@@ -580,7 +580,7 @@ pub async fn fetch_environment_by_uuid(
 
 /// 更新环境基础信息
 pub async fn update_environment(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
     name: Option<&str>,
     description: Option<&str>,
@@ -607,7 +607,7 @@ pub async fn update_environment(
 
 /// 更新环境状态
 pub async fn update_environment_status(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
     status: &str,
 ) -> Result<(), Error> {
@@ -627,7 +627,7 @@ pub async fn update_environment_status(
 
 /// 更新环境代理
 pub async fn update_environment_proxy(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
     proxy_uuid: Option<Uuid>,
 ) -> Result<(), Error> {
@@ -647,7 +647,7 @@ pub async fn update_environment_proxy(
 
 /// 更新环境最后打开时间
 pub async fn update_environment_last_opened(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
 ) -> Result<(), Error> {
     sqlx::query(
@@ -664,7 +664,7 @@ pub async fn update_environment_last_opened(
 }
 
 /// 软删除环境
-pub async fn delete_environment(pool: &Pool<Postgres>, env_uuid: Uuid) -> Result<(), Error> {
+pub async fn delete_environment(pool: &Pool<Db>, env_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE environments SET deleted_at = CURRENT_TIMESTAMP
@@ -680,7 +680,7 @@ pub async fn delete_environment(pool: &Pool<Postgres>, env_uuid: Uuid) -> Result
 
 /// 批量软删除环境
 pub async fn batch_delete_environments(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuids: &[Uuid],
 ) -> Result<u64, Error> {
     if env_uuids.is_empty() {
@@ -707,7 +707,7 @@ pub async fn batch_delete_environments(
 
 /// 查询回收站环境列表（已删除但未永久删除）
 pub async fn fetch_deleted_environments_base(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     team_uuid: Uuid,
     group_uuid: Option<Uuid>,
@@ -779,7 +779,7 @@ pub async fn fetch_deleted_environments_base(
 
 /// 统计回收站环境总数
 pub async fn fetch_deleted_environments_count(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     team_uuid: Uuid,
     group_uuid: Option<Uuid>,
@@ -831,7 +831,7 @@ pub async fn fetch_deleted_environments_count(
 }
 
 /// 恢复环境（将 deleted_at 设为 NULL）
-pub async fn restore_environment(pool: &Pool<Postgres>, env_uuid: Uuid) -> Result<(), Error> {
+pub async fn restore_environment(pool: &Pool<Db>, env_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE environments SET deleted_at = NULL
@@ -847,7 +847,7 @@ pub async fn restore_environment(pool: &Pool<Postgres>, env_uuid: Uuid) -> Resul
 
 /// 批量恢复环境
 pub async fn batch_restore_environments(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuids: &[Uuid],
 ) -> Result<u64, Error> {
     if env_uuids.is_empty() {
@@ -872,7 +872,7 @@ pub async fn batch_restore_environments(
 
 /// 永久删除环境（真正的 DELETE）
 pub async fn permanent_delete_environment(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
 ) -> Result<(), Error> {
     // 先删除关联数据
@@ -915,7 +915,7 @@ pub async fn permanent_delete_environment(
 
 /// 批量永久删除环境
 pub async fn batch_permanent_delete_environments(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuids: &[Uuid],
 ) -> Result<u64, Error> {
     if env_uuids.is_empty() {
@@ -951,7 +951,7 @@ pub async fn batch_permanent_delete_environments(
 }
 
 async fn delete_environment_relations(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     table: &str,
     env_uuids: &[Uuid],
 ) -> Result<(), Error> {
@@ -971,7 +971,7 @@ async fn delete_environment_relations(
 
 /// 创建或更新环境配置
 pub async fn upsert_environment_config(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
     window_info: &serde_json::Value,
     basic_settings: &serde_json::Value,
@@ -1011,7 +1011,7 @@ pub async fn upsert_environment_config(
 
 /// 查询环境配置
 pub async fn fetch_environment_config(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
 ) -> Result<Option<EnvironmentConfigDto>, Error> {
     let rec = sqlx::query_as::<_, EnvironmentConfigDto>(
@@ -1031,7 +1031,7 @@ pub async fn fetch_environment_config(
 
 /// 批量查询环境配置
 pub async fn fetch_environment_configs_by_uuids(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuids: &[Uuid],
 ) -> Result<Vec<EnvironmentConfigDto>, Error> {
     if env_uuids.is_empty() {
@@ -1060,7 +1060,7 @@ pub async fn fetch_environment_configs_by_uuids(
 
 /// 为环境添加标签
 pub async fn insert_environment_tag(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
     tag_uuid: Uuid,
 ) -> Result<(), Error> {
@@ -1081,7 +1081,7 @@ pub async fn insert_environment_tag(
 
 /// 移除环境的标签
 pub async fn remove_environment_tag(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
     tag_uuid: Uuid,
 ) -> Result<(), Error> {
@@ -1100,7 +1100,7 @@ pub async fn remove_environment_tag(
 }
 
 /// 清除环境的所有标签
-pub async fn clear_environment_tags(pool: &Pool<Postgres>, env_uuid: Uuid) -> Result<(), Error> {
+pub async fn clear_environment_tags(pool: &Pool<Db>, env_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         DELETE FROM environment_tags
@@ -1116,7 +1116,7 @@ pub async fn clear_environment_tags(pool: &Pool<Postgres>, env_uuid: Uuid) -> Re
 
 /// 查询环境的所有标签
 pub async fn fetch_environment_tags(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
 ) -> Result<Vec<TagDto>, Error> {
     let recs = sqlx::query_as::<_, TagDto>(
@@ -1138,7 +1138,7 @@ pub async fn fetch_environment_tags(
 
 /// 批量查询环境标签（完整标签信息）
 pub async fn fetch_tags_for_environments(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuids: &[Uuid],
 ) -> Result<Vec<EnvironmentTagRowDto>, Error> {
     if env_uuids.is_empty() {
@@ -1147,11 +1147,11 @@ pub async fn fetch_tags_for_environments(
 
     let statement = format!(
         r#"
-        SELECT 
+        SELECT
             et.environment_uuid,
             t.id as tag_id,
-            t.uuid as tag_uuid, 
-            t.name as tag_name, 
+            t.uuid as tag_uuid,
+            t.name as tag_name,
             t.color as tag_color,
             t.sort_order as tag_sort_order,
             t.user_uuid as tag_user_uuid,
@@ -1178,7 +1178,7 @@ pub async fn fetch_tags_for_environments(
 
 /// 批量查询环境账号（完整账号信息，排除敏感数据）
 pub async fn fetch_accounts_for_environments(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuids: &[Uuid],
 ) -> Result<Vec<EnvironmentAccountRowDto>, Error> {
     if env_uuids.is_empty() {
@@ -1187,12 +1187,12 @@ pub async fn fetch_accounts_for_environments(
 
     let statement = format!(
         r#"
-        SELECT 
+        SELECT
             ea.environment_uuid,
             pa.id as account_id,
-            pa.uuid as account_uuid, 
+            pa.uuid as account_uuid,
             pa.platform_url,
-            pa.platform_name, 
+            pa.platform_name,
             pa.account,
             pa.status as account_status,
             pa.remark
@@ -1214,7 +1214,7 @@ pub async fn fetch_accounts_for_environments(
 
 /// 批量查询分组
 pub async fn fetch_groups_by_uuids(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     group_uuids: &[Uuid],
 ) -> Result<Vec<GroupRowDto>, Error> {
     if group_uuids.is_empty() {
@@ -1240,7 +1240,7 @@ pub async fn fetch_groups_by_uuids(
 
 /// 批量查询代理
 pub async fn fetch_proxies_by_uuids(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     proxy_uuids: &[Uuid],
 ) -> Result<Vec<ProxyRowDto>, Error> {
     if proxy_uuids.is_empty() {
@@ -1270,7 +1270,7 @@ pub async fn fetch_proxies_by_uuids(
 
 /// 创建模板
 pub async fn insert_template(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     team_uuid: Option<Uuid>,
     name: &str,
@@ -1304,7 +1304,7 @@ pub async fn insert_template(
 
 /// 查询模板列表
 pub async fn fetch_templates(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Option<Uuid>,
     user_uuid: Uuid,
     is_public: Option<bool>,
@@ -1336,7 +1336,7 @@ pub async fn fetch_templates(
 
 /// 查询模板总数
 pub async fn fetch_templates_count(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Option<Uuid>,
     user_uuid: Uuid,
     is_public: Option<bool>,
@@ -1361,7 +1361,7 @@ pub async fn fetch_templates_count(
 
 /// 根据 UUID 查询模板
 pub async fn fetch_template_by_uuid(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     template_uuid: Uuid,
 ) -> Result<Option<TemplateDto>, Error> {
     let rec = sqlx::query_as::<_, TemplateDto>(
@@ -1381,7 +1381,7 @@ pub async fn fetch_template_by_uuid(
 
 /// 更新模板
 pub async fn update_template(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     template_uuid: Uuid,
     name: Option<&str>,
     description: Option<&str>,
@@ -1411,7 +1411,7 @@ pub async fn update_template(
 
 /// 增加模板使用次数
 pub async fn increment_template_usage(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     template_uuid: Uuid,
 ) -> Result<(), Error> {
     sqlx::query(
@@ -1428,7 +1428,7 @@ pub async fn increment_template_usage(
 }
 
 /// 软删除模板
-pub async fn delete_template(pool: &Pool<Postgres>, template_uuid: Uuid) -> Result<(), Error> {
+pub async fn delete_template(pool: &Pool<Db>, template_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE templates SET deleted_at = CURRENT_TIMESTAMP
@@ -1446,7 +1446,7 @@ pub async fn delete_template(pool: &Pool<Postgres>, template_uuid: Uuid) -> Resu
 
 /// 添加环境 URL
 pub async fn insert_environment_url(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
     url: &str,
     title: Option<&str>,
@@ -1471,7 +1471,7 @@ pub async fn insert_environment_url(
 
 /// 批量添加环境 URL
 pub async fn batch_insert_environment_urls(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
     urls: &[(String, Option<String>)],
 ) -> Result<i32, Error> {
@@ -1497,7 +1497,7 @@ pub async fn batch_insert_environment_urls(
 
 /// 查询环境的所有 URL
 pub async fn fetch_environment_urls(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
 ) -> Result<Vec<EnvironmentUrlDto>, Error> {
     let recs = sqlx::query_as::<_, EnvironmentUrlDto>(
@@ -1517,7 +1517,7 @@ pub async fn fetch_environment_urls(
 
 /// 批量查询环境的所有 URL
 pub async fn fetch_environment_urls_by_uuids(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuids: &[Uuid],
 ) -> Result<Vec<EnvironmentUrlDto>, Error> {
     if env_uuids.is_empty() {
@@ -1543,7 +1543,7 @@ pub async fn fetch_environment_urls_by_uuids(
 }
 
 /// 删除环境的 URL
-pub async fn delete_environment_url(pool: &Pool<Postgres>, url_id: i32) -> Result<(), Error> {
+pub async fn delete_environment_url(pool: &Pool<Db>, url_id: i32) -> Result<(), Error> {
     sqlx::query(
         r#"
         DELETE FROM environment_urls WHERE id = $1
@@ -1557,7 +1557,7 @@ pub async fn delete_environment_url(pool: &Pool<Postgres>, url_id: i32) -> Resul
 }
 
 /// 清空环境的所有 URL
-pub async fn clear_environment_urls(pool: &Pool<Postgres>, env_uuid: Uuid) -> Result<u64, Error> {
+pub async fn clear_environment_urls(pool: &Pool<Db>, env_uuid: Uuid) -> Result<u64, Error> {
     let result = sqlx::query(
         r#"
         DELETE FROM environment_urls WHERE environment_uuid = $1
@@ -1574,7 +1574,7 @@ pub async fn clear_environment_urls(pool: &Pool<Postgres>, env_uuid: Uuid) -> Re
 
 /// 添加环境 Cookie
 pub async fn insert_environment_cookie(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
     site_input: &str,
     domain: &str,
@@ -1609,7 +1609,7 @@ pub async fn insert_environment_cookie(
 
 /// 批量添加环境 Cookies
 pub async fn batch_insert_environment_cookies(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
     cookies: &[CookieInput],
 ) -> Result<i32, Error> {
@@ -1640,7 +1640,7 @@ pub async fn batch_insert_environment_cookies(
 
 /// 查询环境的所有 Cookies
 pub async fn fetch_environment_cookies(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
 ) -> Result<Vec<EnvironmentCookieDto>, Error> {
     let recs = sqlx::query_as::<_, EnvironmentCookieDto>(
@@ -1660,7 +1660,7 @@ pub async fn fetch_environment_cookies(
 
 /// 批量查询环境的所有 Cookies
 pub async fn fetch_environment_cookies_by_uuids(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuids: &[Uuid],
 ) -> Result<Vec<EnvironmentCookieDto>, Error> {
     if env_uuids.is_empty() {
@@ -1686,7 +1686,7 @@ pub async fn fetch_environment_cookies_by_uuids(
 }
 
 /// 删除环境的 Cookie
-pub async fn delete_environment_cookie(pool: &Pool<Postgres>, cookie_id: i32) -> Result<(), Error> {
+pub async fn delete_environment_cookie(pool: &Pool<Db>, cookie_id: i32) -> Result<(), Error> {
     sqlx::query(
         r#"
         DELETE FROM environment_cookies WHERE id = $1
@@ -1701,7 +1701,7 @@ pub async fn delete_environment_cookie(pool: &Pool<Postgres>, cookie_id: i32) ->
 
 /// 清空环境的所有 Cookies
 pub async fn clear_environment_cookies(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
 ) -> Result<u64, Error> {
     let result = sqlx::query(

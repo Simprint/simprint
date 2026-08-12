@@ -1,13 +1,13 @@
 use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool, placeholders};
+use crate::database::{Db, Pool, placeholders};
 
 use crate::dto::PlatformAccountDto;
 
 /// 创建平台账号
 pub async fn insert_platform_account(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     team_uuid: Option<Uuid>,
     platform_url: &str,
@@ -39,7 +39,7 @@ pub async fn insert_platform_account(
 
 /// 查询平台账号列表
 pub async fn fetch_platform_accounts(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Option<Uuid>,
     user_uuid: Uuid,
     keyword: Option<&str>,
@@ -87,7 +87,7 @@ pub async fn fetch_platform_accounts(
 
 /// 查询平台账号总数
 pub async fn fetch_platform_accounts_count(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Option<Uuid>,
     user_uuid: Uuid,
     keyword: Option<&str>,
@@ -125,7 +125,7 @@ pub async fn fetch_platform_accounts_count(
 
 /// 根据 UUID 查询平台账号
 pub async fn fetch_platform_account_by_uuid(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     account_uuid: Uuid,
 ) -> Result<Option<PlatformAccountDto>, Error> {
     let rec = sqlx::query_as::<_, PlatformAccountDto>(
@@ -147,7 +147,7 @@ pub async fn fetch_platform_account_by_uuid(
 
 /// 更新平台账号
 pub async fn update_platform_account(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     account_uuid: Uuid,
     platform_url: Option<&str>,
     platform_name: Option<&str>,
@@ -183,7 +183,7 @@ pub async fn update_platform_account(
 
 /// 增加账号使用次数
 pub async fn increment_account_usage(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     account_uuid: Uuid,
 ) -> Result<(), Error> {
     sqlx::query(
@@ -202,7 +202,7 @@ pub async fn increment_account_usage(
 
 /// 软删除平台账号
 pub async fn delete_platform_account(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     account_uuid: Uuid,
 ) -> Result<(), Error> {
     sqlx::query(
@@ -220,7 +220,7 @@ pub async fn delete_platform_account(
 
 /// 批量软删除平台账号
 pub async fn batch_delete_platform_accounts(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     account_uuids: &[Uuid],
 ) -> Result<u64, Error> {
     if account_uuids.is_empty() {
@@ -247,7 +247,7 @@ pub async fn batch_delete_platform_accounts(
 
 /// 关联环境和账号
 pub async fn insert_environment_account(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
     account_uuid: Uuid,
     sort_order: i32,
@@ -270,7 +270,7 @@ pub async fn insert_environment_account(
 
 /// 移除环境和账号的关联
 pub async fn remove_environment_account(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
     account_uuid: Uuid,
 ) -> Result<(), Error> {
@@ -290,7 +290,7 @@ pub async fn remove_environment_account(
 
 /// 清空环境的所有账号关联
 pub async fn clear_environment_accounts(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
 ) -> Result<(), Error> {
     sqlx::query(
@@ -307,7 +307,7 @@ pub async fn clear_environment_accounts(
 
 /// 查询环境关联的所有账号
 pub async fn fetch_environment_accounts(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     env_uuid: Uuid,
 ) -> Result<Vec<PlatformAccountDto>, Error> {
     let recs = sqlx::query_as::<_, PlatformAccountDto>(

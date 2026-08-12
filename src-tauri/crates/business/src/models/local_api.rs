@@ -4,14 +4,14 @@ use sha2::{Digest, Sha256};
 use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool};
+use crate::database::{Db, Pool};
 
 use crate::dto::{
     LocalApiKeyDto, LocalApiKeyPermissionDto, LocalApiPermissionDefinitionDto, LocalApiSettingsDto,
 };
 
 pub async fn fetch_local_api_settings(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
 ) -> Result<Option<LocalApiSettingsDto>, Error> {
     sqlx::query_as::<_, LocalApiSettingsDto>(
@@ -27,7 +27,7 @@ pub async fn fetch_local_api_settings(
 }
 
 pub async fn upsert_local_api_settings(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     enabled: Option<bool>,
     port: Option<i32>,
@@ -58,7 +58,7 @@ pub async fn upsert_local_api_settings(
 }
 
 pub async fn fetch_active_api_key(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
 ) -> Result<Option<LocalApiKeyDto>, Error> {
     sqlx::query_as::<_, LocalApiKeyDto>(
@@ -78,7 +78,7 @@ pub async fn fetch_active_api_key(
 }
 
 pub async fn fetch_api_key_by_hash(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     key_hash: &str,
 ) -> Result<Option<LocalApiKeyDto>, Error> {
     sqlx::query_as::<_, LocalApiKeyDto>(
@@ -96,7 +96,7 @@ pub async fn fetch_api_key_by_hash(
     .await
 }
 
-pub async fn deactivate_api_keys_for_user(pool: &Pool<Postgres>, user_uuid: Uuid) -> Result<(), Error> {
+pub async fn deactivate_api_keys_for_user(pool: &Pool<Db>, user_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE user_local_api_keys
@@ -112,7 +112,7 @@ pub async fn deactivate_api_keys_for_user(pool: &Pool<Postgres>, user_uuid: Uuid
 }
 
 pub async fn insert_api_key(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     key_prefix: &str,
     key_hash: &str,
@@ -138,7 +138,7 @@ pub async fn insert_api_key(
 }
 
 pub async fn fetch_api_key_permission(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     api_key_id: i32,
     permission_code: &str,
 ) -> Result<Option<LocalApiKeyPermissionDto>, Error> {
@@ -161,7 +161,7 @@ pub async fn fetch_api_key_permission(
 }
 
 pub async fn insert_api_key_permission(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     api_key_id: i32,
     permission_code: &str,
     rate_limit_per_minute: i32,
@@ -187,7 +187,7 @@ pub async fn insert_api_key_permission(
 }
 
 pub async fn fetch_permission_definition(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     permission_code: &str,
 ) -> Result<Option<LocalApiPermissionDefinitionDto>, Error> {
     sqlx::query_as::<_, LocalApiPermissionDefinitionDto>(
@@ -207,7 +207,7 @@ pub async fn fetch_permission_definition(
 }
 
 pub async fn fetch_permission_definitions(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
 ) -> Result<Vec<LocalApiPermissionDefinitionDto>, Error> {
     sqlx::query_as::<_, LocalApiPermissionDefinitionDto>(
         r#"
@@ -225,7 +225,7 @@ pub async fn fetch_permission_definitions(
 }
 
 pub async fn reset_api_key_daily_usage(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     api_key_id: i32,
     today: chrono::NaiveDate,
 ) -> Result<(), Error> {
@@ -245,7 +245,7 @@ pub async fn reset_api_key_daily_usage(
 }
 
 pub async fn increment_api_key_usage(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     api_key_id: i32,
     used_at: DateTime<Utc>,
 ) -> Result<(), Error> {
@@ -265,7 +265,7 @@ pub async fn increment_api_key_usage(
 }
 
 pub async fn fetch_request_count(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     api_key_id: i32,
     permission_code: &str,
     window_type: &str,
@@ -293,7 +293,7 @@ pub async fn fetch_request_count(
 }
 
 pub async fn increment_request_counter(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     api_key_id: i32,
     permission_code: &str,
     window_type: &str,

@@ -1,7 +1,7 @@
 use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool};
+use crate::database::{Db, Pool};
 
 use crate::dto::{LoginHistoryDto, TeamDto, TeamInvitationDto, TeamMemberDto};
 use crate::entitys::CreateTeamRequest;
@@ -10,7 +10,7 @@ use crate::entitys::CreateTeamRequest;
 
 /// 创建团队
 pub async fn insert_team(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     owner_uuid: Uuid,
     payload: &CreateTeamRequest,
 ) -> Result<Uuid, Error> {
@@ -62,7 +62,7 @@ pub async fn insert_team(
 
 /// 根据 UUID 查询团队
 pub async fn fetch_team_by_uuid(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Uuid,
 ) -> Result<Option<TeamDto>, Error> {
     let rec = sqlx::query_as::<_, TeamDto>(
@@ -82,7 +82,7 @@ pub async fn fetch_team_by_uuid(
 
 /// 查询用户在工作空间中所属的所有团队（工作空间级别）
 pub async fn fetch_user_teams(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     user_uuid: Uuid,
 ) -> Result<Vec<TeamDto>, Error> {
@@ -106,7 +106,7 @@ pub async fn fetch_user_teams(
 
 /// 查询用户当前团队
 pub async fn fetch_user_current_team(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
 ) -> Result<Option<Uuid>, Error> {
     let rec: Option<Uuid> = sqlx::query_scalar(
@@ -124,7 +124,7 @@ pub async fn fetch_user_current_team(
 
 /// 设置用户当前团队
 pub async fn set_user_current_team(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     team_uuid: Uuid,
 ) -> Result<(), Error> {
@@ -142,7 +142,7 @@ pub async fn set_user_current_team(
 }
 
 /// 清除用户当前团队
-pub async fn clear_user_current_team(pool: &Pool<Postgres>, user_uuid: Uuid) -> Result<(), Error> {
+pub async fn clear_user_current_team(pool: &Pool<Db>, user_uuid: Uuid) -> Result<(), Error> {
     sqlx::query(
         r#"
         UPDATE user_infos SET current_team_uuid = NULL WHERE user_uuid = $1
@@ -157,14 +157,14 @@ pub async fn clear_user_current_team(pool: &Pool<Postgres>, user_uuid: Uuid) -> 
 
 /// 更新团队信息
 pub async fn update_team(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Uuid,
     name: Option<&str>,
     description: Option<&str>,
     avatar_hash: Option<&str>,
 ) -> Result<(), Error> {
     let mut query = String::from("UPDATE teams SET updated_at = CURRENT_TIMESTAMP");
-    let mut params: Vec<Box<dyn sqlx::Encode<'_, Postgres> + Send + Sync>> = vec![];
+    let mut params: Vec<Box<dyn sqlx::Encode<'_, Db> + Send + Sync>> = vec![];
 
     if let Some(n) = name {
         query.push_str(", name = $");
@@ -240,7 +240,7 @@ pub async fn update_team(
 
 /// 获取团队成员数量
 pub async fn fetch_team_member_count(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Uuid,
     keyword: Option<&str>,
     role: Option<&str>,
@@ -298,7 +298,7 @@ pub async fn fetch_team_member_count(
 
 /// 查询团队成员列表（关联用户信息，支持筛选）
 pub async fn fetch_team_members(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Uuid,
     offset: i64,
     limit: i64,
@@ -308,17 +308,17 @@ pub async fn fetch_team_members(
 ) -> Result<Vec<TeamMemberDto>, Error> {
     let mut query = String::from(
         r#"
-        SELECT 
-            tm.id, 
+        SELECT
+            tm.id,
             tm.team_uuid,
             tm.workspace_uuid,
-            tm.user_uuid, 
-            tm.role, 
-            tm.joined_at, 
+            tm.user_uuid,
+            tm.role,
+            tm.joined_at,
             tm.invited_by,
-            tm.status, 
-            tm.created_at, 
-            tm.updated_at, 
+            tm.status,
+            tm.created_at,
+            tm.updated_at,
             tm.deleted_at,
             ui.nickname AS name,
             ui.email AS email,
@@ -392,24 +392,24 @@ pub async fn fetch_team_members(
 
 /// 查询用户在团队中的成员信息（工作空间级别）
 pub async fn fetch_team_member(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     team_uuid: Uuid,
     user_uuid: Uuid,
 ) -> Result<Option<TeamMemberDto>, Error> {
     let rec = sqlx::query_as::<_, TeamMemberDto>(
         r#"
-        SELECT 
-            tm.id, 
+        SELECT
+            tm.id,
             tm.team_uuid,
             tm.workspace_uuid,
-            tm.user_uuid, 
-            tm.role, 
-            tm.joined_at, 
+            tm.user_uuid,
+            tm.role,
+            tm.joined_at,
             tm.invited_by,
-            tm.status, 
-            tm.created_at, 
-            tm.updated_at, 
+            tm.status,
+            tm.created_at,
+            tm.updated_at,
             tm.deleted_at,
             ui.nickname AS name,
             ui.email AS email,
@@ -430,7 +430,7 @@ pub async fn fetch_team_member(
 
 /// 添加团队成员
 pub async fn insert_team_member(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Uuid,
     user_uuid: Uuid,
     role: &str,
@@ -455,7 +455,7 @@ pub async fn insert_team_member(
 
 /// 更新成员角色
 pub async fn update_member_role(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Uuid,
     user_uuid: Uuid,
     role: &str,
@@ -478,7 +478,7 @@ pub async fn update_member_role(
 
 /// 更新成员状态
 pub async fn update_member_status(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Uuid,
     user_uuid: Uuid,
     status: &str,
@@ -501,7 +501,7 @@ pub async fn update_member_status(
 
 /// 移除成员（软删除）
 pub async fn remove_team_member(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Uuid,
     user_uuid: Uuid,
 ) -> Result<(), Error> {
@@ -524,7 +524,7 @@ pub async fn remove_team_member(
 
 /// 创建团队邀请
 pub async fn insert_team_invitation(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Uuid,
     email: &str,
     role: &str,
@@ -553,7 +553,7 @@ pub async fn insert_team_invitation(
 
 /// 查询团队邀请
 pub async fn fetch_team_invitation_by_token(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     token: &str,
 ) -> Result<Option<TeamInvitationDto>, Error> {
     let rec = sqlx::query_as::<_, TeamInvitationDto>(
@@ -572,7 +572,7 @@ pub async fn fetch_team_invitation_by_token(
 
 /// 查询团队的待处理邀请
 pub async fn fetch_pending_invitations(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Uuid,
 ) -> Result<Vec<TeamInvitationDto>, Error> {
     let recs = sqlx::query_as::<_, TeamInvitationDto>(
@@ -592,7 +592,7 @@ pub async fn fetch_pending_invitations(
 
 /// 检查是否有待处理的邀请
 pub async fn has_pending_invitation(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     team_uuid: Uuid,
     email: &str,
 ) -> Result<bool, Error> {
@@ -612,7 +612,7 @@ pub async fn has_pending_invitation(
 
 /// 更新邀请状态
 pub async fn update_invitation_status(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     invitation_uuid: Uuid,
     status: &str,
 ) -> Result<(), Error> {
@@ -633,7 +633,7 @@ pub async fn update_invitation_status(
 
 /// 查询邀请（通过 token，别名函数）
 pub async fn fetch_invitation_by_token(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     token: &str,
 ) -> Result<Option<TeamInvitationDto>, Error> {
     fetch_team_invitation_by_token(pool, token).await
@@ -641,7 +641,7 @@ pub async fn fetch_invitation_by_token(
 
 /// 取消邀请
 pub async fn cancel_team_invitation(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     invitation_uuid: Uuid,
 ) -> Result<(), Error> {
     sqlx::query(
@@ -660,7 +660,7 @@ pub async fn cancel_team_invitation(
 
 /// 接受邀请
 pub async fn accept_team_invitation(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     invitation_uuid: Uuid,
     user_uuid: Uuid,
     workspace_uuid: Uuid,
@@ -731,7 +731,7 @@ pub async fn accept_team_invitation(
 
 /// 拒绝邀请
 pub async fn reject_team_invitation(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     invitation_uuid: Uuid,
     _user_uuid: Uuid,
 ) -> Result<(), Error> {
@@ -780,7 +780,7 @@ pub async fn reject_team_invitation(
 
 /// 记录登录历史
 pub async fn insert_login_history(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     ip_address: &str,
     device_info: Option<&str>,
@@ -815,7 +815,7 @@ pub async fn insert_login_history(
 
 /// 查询用户登录历史
 pub async fn fetch_user_login_history(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     limit: i64,
 ) -> Result<Vec<LoginHistoryDto>, Error> {

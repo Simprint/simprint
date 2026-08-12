@@ -1,13 +1,13 @@
 use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool};
+use crate::database::{Db, Pool};
 
 use crate::dto::{ProxyDto, ProxyVisibleTeamDto};
 
 /// 添加代理可见团队
 pub async fn insert_proxy_visible_team(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     proxy_uuid: Uuid,
     workspace_uuid: Uuid,
     team_uuid: Uuid,
@@ -30,7 +30,7 @@ pub async fn insert_proxy_visible_team(
 
 /// 移除代理可见团队
 pub async fn remove_proxy_visible_team(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     proxy_uuid: Uuid,
     team_uuid: Uuid,
 ) -> Result<(), Error> {
@@ -50,7 +50,7 @@ pub async fn remove_proxy_visible_team(
 
 /// 查询代理的可见团队列表
 pub async fn fetch_visible_teams_by_proxy(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     proxy_uuid: Uuid,
 ) -> Result<Vec<ProxyVisibleTeamDto>, Error> {
     let recs = sqlx::query_as::<_, ProxyVisibleTeamDto>(
@@ -70,7 +70,7 @@ pub async fn fetch_visible_teams_by_proxy(
 
 /// 查询团队可见的代理列表
 pub async fn fetch_visible_proxies_by_team(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     team_uuid: Uuid,
 ) -> Result<Vec<ProxyDto>, Error> {
@@ -98,7 +98,7 @@ pub async fn fetch_visible_proxies_by_team(
 
 /// 检查代理对团队是否可见
 pub async fn check_proxy_visibility(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     proxy_uuid: Uuid,
     workspace_uuid: Uuid,
     team_uuid: Uuid,
@@ -120,7 +120,7 @@ pub async fn check_proxy_visibility(
 
 /// 查询工作空间所有可见的代理（包括工作空间 Owner 和代理所有者的代理）
 pub async fn fetch_visible_proxies_for_user(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     user_uuid: Uuid,
     team_uuid: Option<Uuid>,
@@ -171,7 +171,7 @@ pub async fn fetch_visible_proxies_for_user(
 
 /// 分页查询用户可见的代理列表，并支持名称搜索和筛选
 pub async fn fetch_visible_proxies_for_user_paginated(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     user_uuid: Uuid,
     team_uuid: Option<Uuid>,
@@ -235,7 +235,7 @@ pub async fn fetch_visible_proxies_for_user_paginated(
 
 /// 查询用户可见代理总数，并支持名称搜索和筛选
 pub async fn fetch_visible_proxies_for_user_count(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     user_uuid: Uuid,
     team_uuid: Option<Uuid>,

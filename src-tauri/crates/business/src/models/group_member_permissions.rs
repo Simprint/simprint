@@ -1,13 +1,13 @@
 use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool};
+use crate::database::{Db, Pool};
 
 use crate::dto::GroupMemberPermissionDto;
 
 /// 授予分组权限
 pub async fn grant_group_permission(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     group_uuid: Uuid,
     workspace_uuid: Uuid,
     team_uuid: Uuid,
@@ -41,7 +41,7 @@ pub async fn grant_group_permission(
 
 /// 撤销分组权限
 pub async fn revoke_group_permission(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     group_uuid: Uuid,
     user_uuid: Uuid,
 ) -> Result<(), Error> {
@@ -61,7 +61,7 @@ pub async fn revoke_group_permission(
 
 /// 查询用户的分组权限列表
 pub async fn fetch_user_group_permissions(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     user_uuid: Uuid,
     workspace_uuid: Option<Uuid>,
     group_uuid: Option<Uuid>,
@@ -88,7 +88,7 @@ pub async fn fetch_user_group_permissions(
 
 /// 检查用户是否有分组权限（工作空间级别）
 pub async fn check_group_permission(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     workspace_uuid: Uuid,
     group_uuid: Uuid,
     user_uuid: Uuid,
@@ -179,7 +179,7 @@ pub async fn check_group_permission(
 
 /// 查询分组的所有权限
 pub async fn fetch_group_permissions(
-    pool: &Pool<Postgres>,
+    pool: &Pool<Db>,
     group_uuid: Uuid,
 ) -> Result<Vec<GroupMemberPermissionDto>, Error> {
     let recs = sqlx::query_as::<_, GroupMemberPermissionDto>(
