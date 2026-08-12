@@ -1,12 +1,10 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use serde_json::json;
+use tauri::Manager;
 use tokio::{sync::Mutex, time::sleep};
 
 use crate::{
-    app::context::AppContext,
-    infrastructure::http::client::JsonRespnse,
     local_api::types::LocalApiRuntimeConfig,
     mcp::{
         config::{McpConfig, McpManagerStatus, McpServerRuntimeConfig, load_config},
@@ -99,16 +97,17 @@ impl McpManager {
 }
 
 async fn fetch_local_api_runtime_config() -> Result<LocalApiRuntimeConfig, String> {
-    let ctx = AppContext::get();
-    let response: JsonRespnse = ctx
-        .main_server_client
-        .post("local-api/get", &json!({}))
-        .await
-        .map_err(|error| error.to_string())?;
-
-    let data = response.data.ok_or_else(|| "missing local api config data".to_string())?;
-
-    serde_json::from_value::<LocalApiRuntimeConfig>(data).map_err(|error| error.to_string())
+    let app = crate::app::handle::get_app_handle().map_err(|error| error.to_string())?;
+    let context = app.state::<business::svc_ctx::SvcCtx>();
+    let config = business::services::local_api::get_local_api_config_service(
+        &context,
+        context.local_user_uuid,
+    )
+    .await
+    .map_err(|error| error.to_string())?;
+    serde_json::to_value(config)
+        .and_then(serde_json::from_value::<LocalApiRuntimeConfig>)
+        .map_err(|error| error.to_string())
 }
 
 async fn wait_for_mcp_server_ready(health_url: &str) -> Result<(), String> {

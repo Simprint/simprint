@@ -2,10 +2,10 @@
 -- 环境基础信息表
 
 CREATE TABLE IF NOT EXISTS environments (
-    id SERIAL PRIMARY KEY,
-    uuid UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,
-    user_uuid UUID NOT NULL,
-    team_uuid UUID,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    uuid TEXT NOT NULL DEFAULT (randomblob(16)) UNIQUE,
+    user_uuid TEXT NOT NULL,
+    team_uuid TEXT,
     -- 基础信息
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -14,18 +14,18 @@ CREATE TABLE IF NOT EXISTS environments (
     -- 状态: ready, running, error
     status VARCHAR(50) NOT NULL DEFAULT 'ready',
     -- 【关联】分组
-    group_uuid UUID,
+    group_uuid TEXT,
     -- 【关联】代理（环境直接使用的代理，优先级高于分组默认代理）
-    proxy_uuid UUID,
+    proxy_uuid TEXT,
     -- 摘要信息（用于列表显示）
     system_info VARCHAR(100),
     kernel_info VARCHAR(100),
     fingerprint_summary VARCHAR(255),
     -- 时间
-    last_opened_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP WITH TIME ZONE,
+    last_opened_at TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TEXT,
     -- 约束
     CONSTRAINT fk_environments_user FOREIGN KEY (user_uuid) REFERENCES users(uuid),
     CONSTRAINT fk_environments_team FOREIGN KEY (team_uuid) REFERENCES teams(uuid),
@@ -43,6 +43,3 @@ CREATE INDEX idx_environments_deleted_at ON environments(deleted_at);
 CREATE INDEX idx_environments_name ON environments(name);
 
 -- 创建更新时间触发器
-CREATE TRIGGER update_environments_updated_at BEFORE UPDATE ON environments
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-

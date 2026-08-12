@@ -129,6 +129,13 @@ impl PathManager {
         Ok(dir)
     }
 
+    /// SQLite database containing the local-first business data.
+    pub fn get_business_database_file() -> Result<PathBuf> {
+        let path = Self::get_data_dir()?.join("simprint.db");
+        Self::ensure_parent_dir(&path)?;
+        Ok(path)
+    }
+
     pub fn get_local_dir(app: &tauri::AppHandle) -> Result<PathBuf> {
         let dir = Self::get_app_data_dir(app)?.join(".local");
         Self::ensure_dir(&dir)?;

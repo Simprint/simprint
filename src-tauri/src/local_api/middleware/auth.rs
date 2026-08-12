@@ -14,7 +14,7 @@ use crate::local_api::{
 use super::super::client::headers::extract_api_key;
 
 pub async fn auth_middleware(
-    State(_state): State<LocalApiServerState>,
+    State(state): State<LocalApiServerState>,
     mut request: Request,
     next: Next,
 ) -> Response {
@@ -29,6 +29,14 @@ pub async fn auth_middleware(
         )
         .into_response();
     };
+
+    if api_key != state.config.api_key {
+        return LocalApiResponse::<()>::fail(
+            Some("invalid api key"),
+            axum::http::StatusCode::UNAUTHORIZED,
+        )
+        .into_response();
+    }
 
     request.extensions_mut().insert(LocalApiRequestContext { api_key });
     next.run(request).await

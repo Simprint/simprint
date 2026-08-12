@@ -65,7 +65,7 @@ pub async fn fetch_proxies(
           AND ($3 IS NULL OR p.status = $3)
           AND p.deleted_at IS NULL
         ORDER BY p.created_at DESC
-        LIMIT $5 OFFSET $6
+        LIMIT $4 OFFSET $5
         "#,
     )
     .bind(workspace_uuid)

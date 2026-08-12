@@ -4,10 +4,9 @@ use std::sync::{
 };
 
 use anyhow::Result;
-use serde_json::json;
 use tokio::sync::Mutex;
 
-use crate::{app::context::AppContext, local_api::types::LocalApiRuntimeConfig};
+use crate::local_api::types::LocalApiRuntimeConfig;
 
 use super::super::server::bootstrap::{LocalApiServerHandle, spawn_local_api_server};
 
@@ -24,22 +23,17 @@ impl LocalApiManager {
         }
     }
 
-    pub async fn refresh_from_server(self: &Arc<Self>) -> Result<()> {
-        let ctx = AppContext::get();
-        let response = match ctx.main_server_client.post("local-api/get", &json!({})).await {
-            Ok(response) => response,
-            Err(error) => {
-                log::warn!("failed to fetch local api config: {}", error);
-                return Ok(());
-            }
-        };
-
-        let config = response
-            .data
-            .ok_or_else(|| anyhow::anyhow!("missing local api config data"))
-            .and_then(|data| {
-                serde_json::from_value::<LocalApiRuntimeConfig>(data).map_err(Into::into)
-            })?;
+    pub async fn refresh(self: &Arc<Self>, context: &business::svc_ctx::SvcCtx) -> Result<()> {
+        let config = business::services::local_api::get_local_api_config_service(
+            context,
+            context.local_user_uuid,
+        )
+        .await
+        .map_err(anyhow::Error::msg)
+        .and_then(|config| serde_json::to_value(config).map_err(Into::into))
+        .and_then(|value| {
+            serde_json::from_value::<LocalApiRuntimeConfig>(value).map_err(Into::into)
+        })?;
 
         if !config.enabled {
             self.stop().await;

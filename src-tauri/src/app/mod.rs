@@ -13,6 +13,7 @@ pub mod startup;
 
 use crate::commands;
 use components::tray;
+use tauri::Manager;
 
 pub fn run() {
     let ctx = tauri::generate_context!();
@@ -29,6 +30,17 @@ pub fn run() {
                 crate::infrastructure::persistence::tauri_store::get_logs_path(app.handle())
                     .map_err(|e| anyhow::anyhow!("{}", e))?;
             crate::core::logger::init_logging(&log_dir);
+
+            let database_file = crate::core::paths::PathManager::get_business_database_file()?;
+            let database_config = business::utils::DatabaseConfig::from_path(&database_file);
+            let business_context =
+                tauri::async_runtime::block_on(business::svc_ctx::SvcCtx::new(&database_config))?;
+            app.manage(business_context);
+            log::info!(
+                "Local business database initialized: {}",
+                database_file.display()
+            );
+
             setup::register_deep_link(app.handle().clone())?;
 
             crate::commands::window::create_splashscreen_window(app.handle().clone())?;

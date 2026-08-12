@@ -2,10 +2,10 @@
 -- 代理可见团队关联表，控制代理对哪些团队可见
 
 CREATE TABLE IF NOT EXISTS proxy_visible_teams (
-    proxy_uuid UUID NOT NULL,
-    workspace_uuid UUID NOT NULL,
-    team_uuid UUID NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    proxy_uuid TEXT NOT NULL,
+    workspace_uuid TEXT NOT NULL,
+    team_uuid TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- 约束
     CONSTRAINT fk_proxy_visible_teams_proxy FOREIGN KEY (proxy_uuid) REFERENCES proxies(uuid) ON DELETE CASCADE,
     CONSTRAINT fk_proxy_visible_teams_workspace FOREIGN KEY (workspace_uuid) REFERENCES workspaces(uuid) ON DELETE CASCADE,
@@ -20,9 +20,3 @@ CREATE INDEX idx_proxy_visible_teams_team_uuid ON proxy_visible_teams(team_uuid)
 CREATE INDEX idx_proxy_visible_teams_workspace_uuid ON proxy_visible_teams(workspace_uuid);
 
 -- 列注释
-COMMENT ON TABLE proxy_visible_teams IS '代理可见团队关联表，控制代理对哪些团队可见';
-COMMENT ON COLUMN proxy_visible_teams.proxy_uuid IS '代理 UUID';
-COMMENT ON COLUMN proxy_visible_teams.workspace_uuid IS '工作空间 UUID（冗余，便于查询）';
-COMMENT ON COLUMN proxy_visible_teams.team_uuid IS '团队 UUID';
-COMMENT ON COLUMN proxy_visible_teams.created_at IS '创建时间';
-

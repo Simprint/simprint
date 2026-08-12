@@ -121,9 +121,6 @@ unsafe_code = "warn"
 [lints.clippy]
 all = "warn"
 
-[rustfmt]
-use_small_heuristics = "Default"
-
 [features]
 development = []
 production = []

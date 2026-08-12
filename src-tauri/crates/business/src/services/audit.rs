@@ -12,7 +12,7 @@ use crate::svc_ctx::SvcCtx;
 /// 审计日志宏 - 简化审计日志记录
 ///
 /// # 用法
-/// ```rust
+/// ```ignore
 /// // 基础用法: action, target_type, detail
 /// audit_log!(svc_ctx, ctx, "login", "user", "用户登录");
 ///
@@ -232,18 +232,17 @@ pub async fn get_audit_stats_service(
     team_uuid: Option<Uuid>,
 ) -> Result<AuditStatsResponse, String> {
     // 总数
-    let total_logs =
-        models::fetch_audit_logs_count(
-            &svc_ctx.db,
-            current_user_uuid,
-            team_uuid,
-            None,
-            None,
-            None,
-            None,
-        )
-            .await
-            .map_err(|e| e.to_string())?;
+    let total_logs = models::fetch_audit_logs_count(
+        &svc_ctx.db,
+        current_user_uuid,
+        team_uuid,
+        None,
+        None,
+        None,
+        None,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
 
     // 今日数量
     let today = chrono::Utc::now().date_naive();

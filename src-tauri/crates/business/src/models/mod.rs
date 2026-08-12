@@ -1,8 +1,4 @@
-pub mod maintenance;
-pub mod strategy_types;
 pub mod user;
-pub mod version_types;
-pub mod versions;
 
 // 新增模块
 pub mod accounts;
@@ -19,11 +15,7 @@ pub mod teams;
 pub mod workspace_quotas;
 pub mod workspaces;
 
-pub use maintenance::*;
-pub use strategy_types::*;
 pub use user::*;
-pub use version_types::*;
-pub use versions::*;
 
 // 新增导出
 pub use accounts::*;

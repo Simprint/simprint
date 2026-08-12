@@ -215,7 +215,7 @@ pub async fn fetch_visible_proxies_for_user_paginated(
             )
           )
         ORDER BY p.created_at DESC
-        OFFSET $8 LIMIT $9
+        LIMIT $8 OFFSET $9
         "#,
     )
     .bind(workspace_uuid)
@@ -225,8 +225,8 @@ pub async fn fetch_visible_proxies_for_user_paginated(
     .bind(proxy_type)
     .bind(status)
     .bind(country)
-    .bind(offset)
     .bind(limit)
+    .bind(offset)
     .fetch_all(pool)
     .await?;
 

@@ -2,10 +2,10 @@
 -- 代理服务器表
 
 CREATE TABLE IF NOT EXISTS proxies (
-    id SERIAL PRIMARY KEY,
-    uuid UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,
-    user_uuid UUID NOT NULL,
-    team_uuid UUID,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    uuid TEXT NOT NULL DEFAULT (randomblob(16)) UNIQUE,
+    user_uuid TEXT,
+    team_uuid TEXT,
     -- 基础信息
     name VARCHAR(255) NOT NULL,
     host VARCHAR(255) NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS proxies (
     proxy_type VARCHAR(50) NOT NULL DEFAULT 'http',
     -- 认证信息
     username VARCHAR(255),
-    password_encrypted TEXT,
+    password TEXT,
     -- SSH 类型额外字段
     ssh_key_encrypted TEXT,
     ssh_passphrase_encrypted TEXT,
@@ -24,16 +24,15 @@ CREATE TABLE IF NOT EXISTS proxies (
     status VARCHAR(50) NOT NULL DEFAULT 'unknown',
     latency INT,
     last_check_ip VARCHAR(45),
-    last_checked_at TIMESTAMP WITH TIME ZONE,
+    last_checked_at TEXT,
     -- 统计
     usage_count INT DEFAULT 0,
     -- 时间
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP WITH TIME ZONE,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TEXT,
     -- 约束
-    CONSTRAINT fk_proxies_user FOREIGN KEY (user_uuid) REFERENCES users(uuid),
-    CONSTRAINT fk_proxies_team FOREIGN KEY (team_uuid) REFERENCES teams(uuid)
+    CONSTRAINT fk_proxies_user FOREIGN KEY (user_uuid) REFERENCES users(uuid)
 );
 
 -- 创建索引
@@ -44,6 +43,3 @@ CREATE INDEX idx_proxies_status ON proxies(status);
 CREATE INDEX idx_proxies_deleted_at ON proxies(deleted_at);
 
 -- 创建更新时间触发器
-CREATE TRIGGER update_proxies_updated_at BEFORE UPDATE ON proxies
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-

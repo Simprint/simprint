@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::dto::GroupMemberPermissionDto;
+use crate::dto::GroupMemberPermissionDetailDto;
 use crate::entitys::{
     CheckGroupPermissionRequest, GrantGroupPermissionRequest, ListUserGroupPermissionsRequest,
     RevokeGroupPermissionRequest,
@@ -127,13 +127,34 @@ pub async fn check_group_permission_service(
 pub async fn list_user_group_permissions_service(
     svc_ctx: &SvcCtx,
     payload: &ListUserGroupPermissionsRequest,
-) -> Result<Vec<GroupMemberPermissionDto>, String> {
-    models::fetch_user_group_permissions(
+) -> Result<Vec<GroupMemberPermissionDetailDto>, String> {
+    let permissions = models::fetch_user_group_permissions(
         &svc_ctx.db,
         payload.user_uuid,
         None, // workspace_uuid 可以从 payload 中获取，如果需要的话
         payload.group_uuid,
     )
     .await
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+    let offset = ((payload.pagination.page - 1) * payload.pagination.page_size).max(0) as usize;
+    let limit = payload.pagination.page_size.max(0) as usize;
+    let mut details = Vec::new();
+    for permission in permissions.into_iter().skip(offset).take(limit) {
+        let user_info = models::user::fetch_user_info_by_uuid(&svc_ctx.db, permission.user_uuid)
+            .await
+            .map_err(|error| error.to_string())?;
+        details.push(GroupMemberPermissionDetailDto {
+            group_uuid: permission.group_uuid,
+            workspace_uuid: permission.workspace_uuid,
+            team_uuid: permission.team_uuid,
+            user_uuid: permission.user_uuid,
+            permission_type: permission.permission_type,
+            granted_by: permission.granted_by,
+            user_name: user_info.as_ref().and_then(|user| user.nickname.clone()),
+            user_email: user_info.map(|user| user.email),
+            created_at: permission.created_at,
+            updated_at: permission.updated_at,
+        });
+    }
+    Ok(details)
 }

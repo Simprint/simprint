@@ -1,8 +1,12 @@
 use axum::http::StatusCode;
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{Value, json};
+use tauri::Manager;
 
-use crate::{app::context::AppContext, infrastructure::main_server::error::ResponseError};
+use crate::{
+    app::{context::AppContext, handle::get_app_handle},
+    infrastructure::main_server::error::ResponseError,
+};
 
 use super::headers::build_local_api_auth_headers;
 
@@ -12,6 +16,28 @@ pub async fn proxy_request(
     api_key: &str,
     payload: Value,
 ) -> Result<Value, (StatusCode, String)> {
+    let app =
+        get_app_handle().map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+    let business_context = app.state::<business::svc_ctx::SvcCtx>();
+    business::services::local_api::validate_local_api_key_service(
+        &business_context,
+        &business::entitys::ValidateLocalApiKeyRequest {
+            api_key: api_key.to_string(),
+            permission_code: permission_code.to_string(),
+        },
+    )
+    .await
+    .map_err(|message| (StatusCode::UNAUTHORIZED, message))?;
+
+    if let Some(result) =
+        business::dispatcher::dispatch_post(&business_context, server_path, &payload).await
+    {
+        return match result {
+            Ok(data) => Ok(json!({ "code": 1, "message": "OK", "data": data })),
+            Err(message) => Err((StatusCode::BAD_REQUEST, message)),
+        };
+    }
+
     let ctx = AppContext::get();
     let headers = build_local_api_auth_headers(api_key, permission_code)
         .map_err(|error| (StatusCode::BAD_REQUEST, error))?;

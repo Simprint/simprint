@@ -176,9 +176,7 @@ fn parse_cookie_site(site: &str) -> Result<CookieSiteTarget, String> {
     }
 
     if let Ok(parsed) = Url::parse(site) {
-        let host = parsed
-            .host_str()
-            .ok_or_else(|| format!("无效的 Cookie 目标网页: {}", site))?;
+        let host = parsed.host_str().ok_or_else(|| format!("无效的 Cookie 目标网页: {}", site))?;
 
         return Ok(CookieSiteTarget {
             site_input: site.to_string(),
@@ -189,7 +187,10 @@ fn parse_cookie_site(site: &str) -> Result<CookieSiteTarget, String> {
     }
 
     if !site.contains("://") {
-        if site.starts_with('.') && !site.contains('/') && !site.chars().any(|ch| ch.is_whitespace()) {
+        if site.starts_with('.')
+            && !site.contains('/')
+            && !site.chars().any(|ch| ch.is_whitespace())
+        {
             return Ok(CookieSiteTarget {
                 site_input: site.to_string(),
                 domain: site.to_string(),
@@ -244,12 +245,13 @@ fn parse_cookie_line_with_attrs(
     line: &str,
     site_target: &CookieSiteTarget,
 ) -> Result<CookieInput, String> {
-    let parts: Vec<&str> = line.split(';').map(|part| part.trim()).filter(|part| !part.is_empty()).collect();
+    let parts: Vec<&str> = line
+        .split(';')
+        .map(|part| part.trim())
+        .filter(|part| !part.is_empty())
+        .collect();
     let (name, value) = parse_cookie_name_value(
-        parts
-            .first()
-            .copied()
-            .ok_or_else(|| "Cookie 内容不能为空".to_string())?,
+        parts.first().copied().ok_or_else(|| "Cookie 内容不能为空".to_string())?,
     )?;
 
     let mut domain = site_target.domain.clone();
@@ -294,11 +296,7 @@ fn parse_cookie_group(group: &CookieGroupInput) -> Result<Vec<CookieInput>, Stri
 
     let mut cookies = Vec::new();
 
-    for line in cookie_text
-        .lines()
-        .map(|line| line.trim())
-        .filter(|line| !line.is_empty())
-    {
+    for line in cookie_text.lines().map(|line| line.trim()).filter(|line| !line.is_empty()) {
         let parts: Vec<&str> = line
             .split(';')
             .map(|part| part.trim())
@@ -309,7 +307,8 @@ fn parse_cookie_group(group: &CookieGroupInput) -> Result<Vec<CookieInput>, Stri
             continue;
         }
 
-        let has_attr_style = parts.len() > 1 && parts.iter().skip(1).all(|part| is_cookie_attribute(part));
+        let has_attr_style =
+            parts.len() > 1 && parts.iter().skip(1).all(|part| is_cookie_attribute(part));
         if has_attr_style {
             cookies.push(parse_cookie_line_with_attrs(line, &site_target)?);
             continue;
@@ -337,7 +336,10 @@ fn parse_cookie_group(group: &CookieGroupInput) -> Result<Vec<CookieInput>, Stri
     Ok(cookies)
 }
 
-fn format_cookie_row(cookie: &EnvironmentCookieDto, site_target: Option<&CookieSiteTarget>) -> String {
+fn format_cookie_row(
+    cookie: &EnvironmentCookieDto,
+    site_target: Option<&CookieSiteTarget>,
+) -> String {
     let mut parts = vec![format!("{}={}", cookie.name, cookie.value)];
 
     let default_domain = site_target.map(|target| target.domain.as_str()).unwrap_or("");
@@ -376,10 +378,7 @@ fn group_cookie_rows(cookie_rows: Vec<EnvironmentCookieDto>) -> Vec<EnvironmentC
     let mut grouped: HashMap<String, Vec<EnvironmentCookieDto>> = HashMap::new();
 
     for cookie in cookie_rows {
-        grouped
-            .entry(cookie.site_input.clone())
-            .or_default()
-            .push(cookie);
+        grouped.entry(cookie.site_input.clone()).or_default().push(cookie);
     }
 
     let mut items: Vec<EnvironmentCookieGroupDto> = grouped
@@ -387,15 +386,12 @@ fn group_cookie_rows(cookie_rows: Vec<EnvironmentCookieDto>) -> Vec<EnvironmentC
         .map(|(site, cookies)| {
             let site_target = parse_cookie_site(&site).ok();
             let simple_only = cookies.iter().all(|cookie| {
-                let default_domain = site_target
-                    .as_ref()
-                    .map(|target| target.domain.as_str())
-                    .unwrap_or("");
-                let default_path = site_target
-                    .as_ref()
-                    .map(|target| target.path.as_str())
-                    .unwrap_or("/");
-                let default_secure = site_target.as_ref().map(|target| target.secure).unwrap_or(false);
+                let default_domain =
+                    site_target.as_ref().map(|target| target.domain.as_str()).unwrap_or("");
+                let default_path =
+                    site_target.as_ref().map(|target| target.path.as_str()).unwrap_or("/");
+                let default_secure =
+                    site_target.as_ref().map(|target| target.secure).unwrap_or(false);
 
                 cookie.domain == default_domain
                     && cookie.path.as_deref().unwrap_or("/") == default_path
@@ -670,14 +666,10 @@ pub async fn get_environments_service(
             .map_err(|e| e.to_string())?;
         let mut grouped_rows: HashMap<Uuid, Vec<EnvironmentCookieDto>> = HashMap::new();
         for cookie in cookie_rows {
-            grouped_rows
-                .entry(cookie.environment_uuid)
-                .or_default()
-                .push(cookie);
+            grouped_rows.entry(cookie.environment_uuid).or_default().push(cookie);
         }
         for (environment_uuid, rows) in grouped_rows {
-            cookies_map
-                .insert(environment_uuid, group_cookie_rows(rows));
+            cookies_map.insert(environment_uuid, group_cookie_rows(rows));
         }
     }
 
@@ -847,12 +839,8 @@ pub async fn get_environment_detail_service(
         get_environment_service(svc_ctx, workspace_uuid, team_uuid, user_uuid, env_uuid).await?;
 
     let config = get_environment_config_service(svc_ctx, env_uuid).await.ok();
-    let cookies = get_environment_cookies_service(svc_ctx, env_uuid)
-        .await
-        .unwrap_or_default();
-    let urls = get_environment_urls_service(svc_ctx, env_uuid)
-        .await
-        .unwrap_or_default();
+    let cookies = get_environment_cookies_service(svc_ctx, env_uuid).await.unwrap_or_default();
+    let urls = get_environment_urls_service(svc_ctx, env_uuid).await.unwrap_or_default();
 
     let tags = get_environment_tags_service(svc_ctx, env_uuid).await?;
 
@@ -1198,7 +1186,7 @@ pub async fn get_recycle_bin_environments_service(
     svc_ctx: &SvcCtx,
     workspace_uuid: Uuid,
     team_uuid: Uuid,
-    user_uuid: Uuid,
+    _user_uuid: Uuid,
     payload: &ListEnvironmentsRequest,
 ) -> Result<(Vec<crate::entitys::EnvironmentDetailResponse>, i64), String> {
     // 1. 提取过滤参数
@@ -1330,10 +1318,7 @@ pub async fn get_recycle_bin_environments_service(
         .await
         .map_err(|e| e.to_string())?;
     for url in url_rows {
-        env_urls_map
-            .entry(url.environment_uuid)
-            .or_default()
-            .push(url);
+        env_urls_map.entry(url.environment_uuid).or_default().push(url);
     }
 
     let mut env_cookies_map: HashMap<Uuid, Vec<EnvironmentCookieGroupDto>> = HashMap::new();
@@ -1342,14 +1327,10 @@ pub async fn get_recycle_bin_environments_service(
         .map_err(|e| e.to_string())?;
     let mut grouped_cookie_rows: HashMap<Uuid, Vec<EnvironmentCookieDto>> = HashMap::new();
     for cookie in cookie_rows {
-        grouped_cookie_rows
-            .entry(cookie.environment_uuid)
-            .or_default()
-            .push(cookie);
+        grouped_cookie_rows.entry(cookie.environment_uuid).or_default().push(cookie);
     }
     for (environment_uuid, rows) in grouped_cookie_rows {
-        env_cookies_map
-            .insert(environment_uuid, group_cookie_rows(rows));
+        env_cookies_map.insert(environment_uuid, group_cookie_rows(rows));
     }
 
     // 9. 批量查询账号信息

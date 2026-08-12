@@ -3,7 +3,7 @@
 -- 服务端在发现历史记录缺少 api_key 时，会自动轮换生成新 key。
 
 ALTER TABLE user_local_api_keys
-    ADD COLUMN IF NOT EXISTS api_key TEXT;
+    ADD COLUMN api_key TEXT;
 
 ALTER TABLE user_local_api_keys
-    DROP COLUMN IF EXISTS masked_key;
+    DROP COLUMN masked_key;

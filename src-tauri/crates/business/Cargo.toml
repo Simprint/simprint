@@ -18,14 +18,8 @@ serde_json = "^1"
 thiserror = "2"
 anyhow = "1.0.93"
 chrono = { version = "0.4", features = ["serde"] }
-rand = "0.9"
-jwt = "0.16.0"
-argon2 = "0.5.3"
-aes-gcm = "0.10.3"
 sha2 = "0.10.8"
-hmac = "0.12.1"
 hex = "0.4"
-config = "0.15"
 tracing = "0.1"
 sqlx = { version = "0.8", features = [
     "sqlite",
@@ -40,6 +34,4 @@ uuid = { version = "1.11.0", features = [
     "macro-diagnostics",
     "serde",
 ] }
-lettre = "0.11"
-dashmap = "6.1.0"
 url = "2.5.4"

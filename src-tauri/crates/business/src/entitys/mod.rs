@@ -1,13 +1,8 @@
-pub mod maintenance;
-pub mod strategy_types;
 pub mod user;
-pub mod version_types;
-pub mod versions;
 
 // 新增模块
 pub mod accounts;
 pub mod audit;
-pub mod browser_kernel;
 pub mod common;
 pub mod environments;
 pub mod group_member_permissions;
@@ -24,16 +19,11 @@ pub mod templates;
 pub mod workspace_quotas;
 pub mod workspaces;
 
-pub use maintenance::*;
-pub use strategy_types::*;
 pub use user::*;
-pub use version_types::*;
-pub use versions::*;
 
 // 新增导出
 pub use accounts::*;
 pub use audit::*;
-pub use browser_kernel::*;
 pub use common::*;
 pub use environments::*;
 pub use group_member_permissions::*;

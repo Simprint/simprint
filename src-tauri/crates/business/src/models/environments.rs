@@ -808,7 +808,6 @@ pub async fn fetch_deleted_environments_count(
             "(LOWER(e.name) LIKE LOWER(${}) OR CAST(e.uuid AS TEXT) LIKE LOWER(${}))",
             param_index, param_index
         ));
-        param_index += 1;
     }
 
     if !conditions.is_empty() {

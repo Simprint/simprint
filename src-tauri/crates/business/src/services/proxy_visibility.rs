@@ -2,8 +2,8 @@ use uuid::Uuid;
 
 use crate::dto::ProxyDto;
 use crate::entitys::{
-    BatchSetProxyVisibleRequest, ListVisibleProxiesRequest,
-    RemoveProxyVisibleRequest, SetProxyVisibleRequest,
+    BatchSetProxyVisibleRequest, ListVisibleProxiesRequest, RemoveProxyVisibleRequest,
+    SetProxyVisibleRequest,
 };
 use crate::models;
 use crate::svc_ctx::SvcCtx;
@@ -140,4 +140,28 @@ pub async fn check_proxy_visibility_service(
     models::check_proxy_visibility(&svc_ctx.db, proxy_uuid, workspace_uuid, team_uuid)
         .await
         .map_err(|e| e.to_string())
+}
+
+pub async fn get_proxy_visible_teams_service(
+    svc_ctx: &SvcCtx,
+    proxy_uuid: Uuid,
+) -> Result<Vec<crate::dto::ProxyVisibleTeamDetailDto>, String> {
+    let visible_teams = models::fetch_visible_teams_by_proxy(&svc_ctx.db, proxy_uuid)
+        .await
+        .map_err(|error| error.to_string())?;
+    let mut details = Vec::with_capacity(visible_teams.len());
+    for visible in visible_teams {
+        let team_name = models::fetch_team_by_uuid(&svc_ctx.db, visible.team_uuid)
+            .await
+            .map_err(|error| error.to_string())?
+            .map(|team| team.name);
+        details.push(crate::dto::ProxyVisibleTeamDetailDto {
+            proxy_uuid: visible.proxy_uuid,
+            workspace_uuid: visible.workspace_uuid,
+            team_uuid: visible.team_uuid,
+            team_name,
+            created_at: visible.created_at,
+        });
+    }
+    Ok(details)
 }

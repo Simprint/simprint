@@ -39,7 +39,7 @@ pub async fn create_workspace_service(
         .map_err(|e| e.to_string())?;
 
     // 创建默认配额（从配置读取）
-    let quota = &svc_ctx.config.workspace_quota.default;
+    let quota = &svc_ctx.workspace_quota.default;
     models::insert_or_update_workspace_quota(
         &svc_ctx.db,
         workspace_uuid,

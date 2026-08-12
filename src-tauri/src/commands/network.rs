@@ -40,9 +40,31 @@ pub async fn http_get(url: String) -> std::result::Result<JsonRespnse, String> {
 pub async fn http_post(
     url: String,
     data: Option<Value>,
+    business_context: tauri::State<'_, business::svc_ctx::SvcCtx>,
 ) -> std::result::Result<JsonRespnse, String> {
+    let payload = data.unwrap_or_else(|| Value::Object(Default::default()));
+    if let Some(result) =
+        business::dispatcher::dispatch_post(&business_context, &url, &payload).await
+    {
+        return Ok(match result {
+            Ok(data) => JsonRespnse {
+                code: Some(1),
+                message: Some("OK".to_string()),
+                data: (!data.is_null()).then_some(data),
+            },
+            Err(message) => JsonRespnse {
+                code: Some(-1),
+                message: Some(message),
+                data: None,
+            },
+        });
+    }
+
     let ctx = AppContext::get();
-    ctx.main_server_client.post(&url, &data).await.map_err(|e| e.to_string())
+    ctx.main_server_client
+        .post(&url, &Some(payload))
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// HTTP POST 表单请求（用于文件上传）

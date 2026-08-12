@@ -203,27 +203,11 @@ pub async fn invite_member_service(
     .map_err(|e| e.to_string())?;
 
     // 1. 发送邮件通知
-    let smtp_config = svc_ctx.config.clone().smtp.ok_or_else(|| "邮箱配置不存在".to_string())?;
 
     let inviter_name: &str =
         inviter_info.nickname.as_deref().unwrap_or_else(|| inviter_info.email.as_str());
     let inviter_email: &str = inviter_info.email.as_str();
 
-    let email_title = format!("团队邀请：{} 邀请您加入团队", inviter_name);
-    let email_body = format!(
-        "<html><body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333;\"><div style=\"max-width: 600px; margin: 0 auto; padding: 20px;\"><h2 style=\"color: rgb(37, 99, 235);\">团队邀请</h2><p>您好，</p><p><strong>{}</strong>（{}）邀请您加入团队 <strong>{}</strong>。</p><p>邀请角色：<strong>{}</strong></p><p>邀请有效期：7 天</p><p style=\"margin-top: 30px;\"><a href=\"#\" style=\"background-color: rgb(37, 99, 235); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;\">接受邀请</a></p><p style=\"margin-top: 20px; color: #666; font-size: 12px;\">如果您不想接受此邀请，可以忽略此邮件。</p></div></body></html>",
-        inviter_name, inviter_email, team.name, payload.role
-    );
-
-    // 发送邮件（失败不影响邀请流程）
-    let _ = crate::utils::send_email(
-        &smtp_config.smtp_username,
-        &smtp_config.smtp_password,
-        &smtp_config.smtp_server,
-        &payload.email,
-        &email_title,
-        &email_body,
-    );
 
     // 2. 如果用户已注册，发送团队邀请消息通知
     let _ = crate::services::messages::create_message_service(

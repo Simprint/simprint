@@ -2,14 +2,14 @@
 -- RPA 任务表
 
 CREATE TABLE IF NOT EXISTS rpa_tasks (
-    id SERIAL PRIMARY KEY,
-    uuid UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,
-    user_uuid UUID NOT NULL,
-    team_uuid UUID,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    uuid TEXT NOT NULL DEFAULT (randomblob(16)) UNIQUE,
+    user_uuid TEXT NOT NULL,
+    team_uuid TEXT,
     -- 基础信息
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    tags JSONB DEFAULT '[]',
+    tags TEXT DEFAULT '[]',
     -- 触发器: manual, scheduled, event
     trigger_type VARCHAR(50) NOT NULL DEFAULT 'manual',
     -- 调度: hourly, daily, weekly, custom
@@ -25,21 +25,21 @@ CREATE TABLE IF NOT EXISTS rpa_tasks (
     -- 并发数
     concurrency INT DEFAULT 1,
     -- 错误时停止
-    stop_on_error BOOLEAN DEFAULT TRUE,
+    stop_on_error INTEGER DEFAULT TRUE,
     -- 通知设置
-    notify_on_complete BOOLEAN DEFAULT FALSE,
-    notify_on_error BOOLEAN DEFAULT TRUE,
+    notify_on_complete INTEGER DEFAULT FALSE,
+    notify_on_error INTEGER DEFAULT TRUE,
     -- 状态: idle, running, completed, failed, cancelled
     status VARCHAR(50) NOT NULL DEFAULT 'idle',
     -- 统计
     run_count INT DEFAULT 0,
     success_count INT DEFAULT 0,
-    last_run_at TIMESTAMP WITH TIME ZONE,
-    next_run_at TIMESTAMP WITH TIME ZONE,
+    last_run_at TEXT,
+    next_run_at TEXT,
     -- 时间
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP WITH TIME ZONE,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TEXT,
     -- 约束
     CONSTRAINT fk_rpa_tasks_user FOREIGN KEY (user_uuid) REFERENCES users(uuid),
     CONSTRAINT fk_rpa_tasks_team FOREIGN KEY (team_uuid) REFERENCES teams(uuid)
@@ -54,6 +54,3 @@ CREATE INDEX idx_rpa_tasks_next_run_at ON rpa_tasks(next_run_at);
 CREATE INDEX idx_rpa_tasks_deleted_at ON rpa_tasks(deleted_at);
 
 -- 创建更新时间触发器
-CREATE TRIGGER update_rpa_tasks_updated_at BEFORE UPDATE ON rpa_tasks
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
