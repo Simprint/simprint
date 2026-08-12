@@ -5,17 +5,12 @@ use anyhow::Result;
 use tauri::AppHandle;
 
 use crate::app::context::AppContext;
-use crate::core::config;
 
 /// 初始化应用核心组件（早期阶段，不依赖 Tauri）
 ///
 /// 按照正确的依赖顺序初始化所有组件
 pub fn init_early() -> Result<()> {
-    // 1. 加载配置（最先初始化，其他组件依赖配置）
-    let app_config = config::get_or_err()?.clone();
-
-    // 2. 初始化应用上下文（包含 RSA、HTTP 客户端、runtime 管理器）
-    AppContext::init_early(app_config)?;
+    AppContext::init_early()?;
 
     Ok(())
 }

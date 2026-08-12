@@ -5,7 +5,6 @@ import {
   FolderOpen,
   Download,
   RefreshCcw,
-  FlaskConical,
   Database,
   FileBox,
   FileText,
@@ -17,23 +16,14 @@ import {
   X,
 } from 'lucide-react';
 import { getVersion } from '@tauri-apps/api/app';
-import { invoke } from '@/lib/tauri';
-import { relaunch } from '@tauri-apps/plugin-process';
 import { toast } from 'sonner';
-import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import { checkForAppUpdate, openAppUpdateDialog } from '@/lib/app-updater';
 import { FormattedDialog, FormattedDialogFooter } from '@/components/formatted-dialog';
 import { SettingCard } from './setting-card';
-import { SettingRow } from './setting-row';
 import { StoragePanelSkeleton } from './storage-panel-skeleton';
-import {
-  getStorageSettings,
-  setStorageSettings,
-} from '../../../../services/store/src';
-import {
-  getStorageDefaultPaths,
-  getDirectorySizes,
-} from '../api/storage';
+import { getStorageSettings, setStorageSettings } from '../../../../services/store/src';
+import { getStorageDefaultPaths, getDirectorySizes } from '../api/storage';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { open as openFolderDialog } from '@tauri-apps/plugin-dialog';
 import type { DirectorySizeCache, StoragePathKey } from '../../../../services/store/src';
@@ -49,10 +39,40 @@ interface StorageItemDef {
 }
 
 const STORAGE_ITEM_DEFS: StorageItemDef[] = [
-  { id: 'profiles', key: 'profilesPath', nameKey: 'storageProfiles', descKey: 'storageProfilesDesc', icon: Database, color: 'bg-blue-500', readonly: true },
-  { id: 'cache', key: 'cachePath', nameKey: 'storageCache', descKey: 'storageCacheDesc', icon: HardDrive, color: 'bg-amber-500' },
-  { id: 'logs', key: 'logsPath', nameKey: 'storageLogs', descKey: 'storageLogsDesc', icon: FileText, color: 'bg-emerald-500' },
-  { id: 'downloads', key: 'downloadsPath', nameKey: 'storageDownloads', descKey: 'storageDownloadsDesc', icon: FileBox, color: 'bg-purple-500', readonly: true },
+  {
+    id: 'profiles',
+    key: 'profilesPath',
+    nameKey: 'storageProfiles',
+    descKey: 'storageProfilesDesc',
+    icon: Database,
+    color: 'bg-blue-500',
+    readonly: true,
+  },
+  {
+    id: 'cache',
+    key: 'cachePath',
+    nameKey: 'storageCache',
+    descKey: 'storageCacheDesc',
+    icon: HardDrive,
+    color: 'bg-amber-500',
+  },
+  {
+    id: 'logs',
+    key: 'logsPath',
+    nameKey: 'storageLogs',
+    descKey: 'storageLogsDesc',
+    icon: FileText,
+    color: 'bg-emerald-500',
+  },
+  {
+    id: 'downloads',
+    key: 'downloadsPath',
+    nameKey: 'storageDownloads',
+    descKey: 'storageDownloadsDesc',
+    icon: FileBox,
+    color: 'bg-purple-500',
+    readonly: true,
+  },
 ];
 
 const EMPTY_SIZES = STORAGE_ITEM_DEFS.map(() => 0);
@@ -63,9 +83,9 @@ function isDirectorySizeCacheValid(
 ): cache is DirectorySizeCache {
   return Boolean(
     cache &&
-      cache.paths.length === paths.length &&
-      cache.sizes.length === paths.length &&
-      cache.paths.every((path, index) => path === paths[index])
+    cache.paths.length === paths.length &&
+    cache.sizes.length === paths.length &&
+    cache.paths.every((path, index) => path === paths[index])
   );
 }
 
@@ -74,8 +94,6 @@ function isDirectorySizeCacheValid(
  */
 export const StoragePanel: React.FC = () => {
   const { t } = useTranslation('settings');
-  const [betaChannel, setBetaChannel] = useState(true);
-  const [storageSettingsLoaded, setStorageSettingsLoaded] = useState(false);
   const [appVersion, setAppVersion] = useState<string | null>(null);
 
   const [defaultPaths, setDefaultPaths] = useState<{
@@ -100,23 +118,6 @@ export const StoragePanel: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    void getStorageSettings()
-      .then((s) => {
-        if (!cancelled) {
-          setBetaChannel(s.betaChannel);
-          setStorageSettingsLoaded(true);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setStorageSettingsLoaded(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
     void getVersion()
       .then((v) => {
         if (!cancelled) setAppVersion(v);
@@ -132,10 +133,7 @@ export const StoragePanel: React.FC = () => {
   const loadPathsAndSizes = useCallback(async () => {
     setPathsLoading(true);
     try {
-      const [defs, storage] = await Promise.all([
-        getStorageDefaultPaths(),
-        getStorageSettings(),
-      ]);
+      const [defs, storage] = await Promise.all([getStorageDefaultPaths(), getStorageSettings()]);
       setDefaultPaths(defs);
 
       const resolvedPaths = STORAGE_ITEM_DEFS.map((d) => {
@@ -187,11 +185,6 @@ export const StoragePanel: React.FC = () => {
     void loadPathsAndSizes();
   }, [loadPathsAndSizes]);
 
-  const handleBetaChannelChange = useCallback((checked: boolean) => {
-    setBetaChannel(checked);
-    void setStorageSettings({ betaChannel: checked });
-  }, []);
-
   const totalSizeBytes = sizes.reduce((a, b) => a + b, 0);
 
   const handleCopyPath = (path: string) => {
@@ -229,15 +222,16 @@ export const StoragePanel: React.FC = () => {
   const handleCheckUpdate = useCallback(async () => {
     setUpdateChecking(true);
     try {
-      const available = await invoke<boolean>('check_update_available');
-      setHasUpdate(available);
+      const update = await checkForAppUpdate({ force: true });
+      setHasUpdate(Boolean(update));
       setUpdateChecked(true);
-      if (available) {
+      if (update) {
         toast.success(t('updateAvailable'));
+        openAppUpdateDialog();
       } else {
         toast.success(t('alreadyLatest'));
       }
-    } catch (e) {
+    } catch {
       toast.error(t('checkUpdateFailed') || '检查更新失败');
       setHasUpdate(false);
       setUpdateChecked(true);
@@ -246,13 +240,9 @@ export const StoragePanel: React.FC = () => {
     }
   }, [t]);
 
-  const handleUpdateNow = useCallback(async () => {
-    try {
-      await relaunch();
-    } catch (e) {
-      toast.error(t('updateNowFailed') || '立即更新失败');
-    }
-  }, [t]);
+  const handleUpdateNow = useCallback(() => {
+    openAppUpdateDialog();
+  }, []);
 
   const handleConfirmRestore = useCallback(async () => {
     setRestoreSubmitting(true);
@@ -461,14 +451,6 @@ export const StoragePanel: React.FC = () => {
 
       {/* 版本更新 */}
       <SettingCard title={t('versionUpdate')} icon={Download}>
-        <SettingRow icon={FlaskConical} title={t('betaChannel')} description={t('betaChannelDesc')}>
-          <Switch
-            checked={betaChannel}
-            onCheckedChange={handleBetaChannelChange}
-            disabled={!storageSettingsLoaded}
-          />
-        </SettingRow>
-
         {/* 当前版本 */}
         <div className="flex items-center justify-between p-4 bg-accent/30 rounded-lg mx-2 my-2">
           <div>

@@ -3,7 +3,6 @@
 
 use log::error;
 
-use simprint_lib::core::config;
 use simprint_lib::core::logger;
 
 /// 屏蔽环境变量
@@ -20,13 +19,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }));
 
     disable_env_var();
-
-    // 1. 首先初始化配置（从加密的 bin 中解密得到配置内容）
-    // 注意：必须在 security_context::init() 之前初始化，因为 anchor 存储需要读取配置
-    if let Err(e) = config::init() {
-        eprintln!("Failed to initialize config: {}", e);
-        std::process::exit(-1);
-    }
 
     // 初始化日志系统（兜底目录，Tauri 启动后会在 setup 中按 store 设置重新初始化）
     logger::init_logging(logger::bootstrap_log_dir());

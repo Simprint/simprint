@@ -65,8 +65,6 @@ fn try_complete_startup(app: &AppHandle) -> Result<(), ()> {
         }
     }
 
-    crate::app::startup_update::start_background(app.clone());
-
     Ok(())
 }
 

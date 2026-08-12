@@ -276,7 +276,7 @@ fn copy_local_extension_crx(source_path: &str, crx_path: &Path) -> Result<()> {
 
 /// 校验扩展文件哈希
 fn verify_extension_hash(crx_path: &Path, expected_hash: &str) -> Result<()> {
-    use crate::infrastructure::updater::planner::calculate_file_hash;
+    use crate::core::utils::hash::calculate_file_hash;
 
     let actual_hash = calculate_file_hash(crx_path)?;
     let expected = expected_hash.trim().to_lowercase();

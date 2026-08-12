@@ -9,7 +9,6 @@ use std::sync::Arc;
 use tokio::sync::OnceCell;
 
 use crate::app::runtime::SimprintRuntimeManager;
-use crate::core::config::AppConfig;
 use crate::local_api::LocalApiManager;
 use crate::mcp::McpManager;
 use crate::services::environment::{EnvironmentPositionManager, EnvironmentStatusManager};
@@ -19,9 +18,6 @@ use crate::services::mihomo::MihomoManager;
 ///
 /// 包含所有需要全局访问的状态和服务
 pub struct AppContext {
-    /// 应用配置（不可变）
-    pub config: AppConfig,
-
     /// 环境状态管理器
     pub env_status_manager: Arc<EnvironmentStatusManager>,
 
@@ -46,7 +42,7 @@ static APP_CONTEXT: OnceCell<Arc<AppContext>> = OnceCell::const_new();
 
 impl AppContext {
     /// 创建新的应用上下文（早期初始化，不依赖 AppHandle）
-    pub fn new(config: AppConfig) -> anyhow::Result<Self> {
+    pub fn new() -> anyhow::Result<Self> {
         // 初始化环境状态管理器
         let env_status_manager = Arc::new(EnvironmentStatusManager::new());
 
@@ -66,7 +62,6 @@ impl AppContext {
         let simprint_runtime_manager = Arc::new(SimprintRuntimeManager::new());
 
         Ok(Self {
-            config,
             env_status_manager,
             env_position_manager,
             local_api_manager,
@@ -77,17 +72,12 @@ impl AppContext {
     }
 
     /// 初始化全局上下文（早期阶段）
-    pub fn init_early(config: AppConfig) -> anyhow::Result<&'static Arc<AppContext>> {
-        let context = Arc::new(Self::new(config)?);
+    pub fn init_early() -> anyhow::Result<&'static Arc<AppContext>> {
+        let context = Arc::new(Self::new()?);
         APP_CONTEXT
             .set(context)
             .map_err(|_| anyhow::anyhow!("AppContext already initialized"))?;
         Ok(APP_CONTEXT.get().unwrap())
-    }
-
-    /// 获取应用配置
-    pub fn config(&self) -> &AppConfig {
-        &self.config
     }
 
     /// 获取全局上下文（如果未初始化则 panic）

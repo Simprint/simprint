@@ -13,7 +13,6 @@ pub mod network;
 pub mod rpa;
 pub mod security;
 pub mod store;
-pub mod updater;
 pub mod window;
 
 pub fn register_handles() -> impl Fn(Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
@@ -79,13 +78,6 @@ pub fn register_handles() -> impl Fn(Invoke<tauri::Wry>) -> bool + Send + Sync +
         auth::verify_local_user_password,
         auth::logout,
         auth::is_logged_in,
-        // Updater commands
-        updater::check_update_available,
-        updater::check_updates,
-        updater::download_updates,
-        updater::start_update_install,
-        updater::start_prepared_update_install,
-        updater::get_prepared_update,
         // Core utilities
         crate::core::utils::process::kill_process,
         crate::core::utils::process::find_process,

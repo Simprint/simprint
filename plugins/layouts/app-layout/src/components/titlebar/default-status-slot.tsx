@@ -1,6 +1,6 @@
 import { NotificationMenu } from './notification-menu';
 import { DownloadMenu } from './download-menu';
-import { PreparedUpdateButton } from './prepared-update-button';
+import { AppUpdateButton } from './app-update-button';
 import { UserMenu } from './user-menu';
 
 /**
@@ -10,7 +10,7 @@ export function DefaultStatusSlot() {
   return (
     <>
       <div className="flex items-center gap-2 mx-2">
-        <PreparedUpdateButton />
+        <AppUpdateButton />
         <NotificationMenu />
         <DownloadMenu />
       </div>

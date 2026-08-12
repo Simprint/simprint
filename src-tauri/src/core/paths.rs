@@ -29,8 +29,6 @@ struct BootstrapConfig {
     cache_dir: Option<String>,
     data_dir: Option<String>,
     kernels_dir: Option<String>,
-    updater_dir: Option<String>,
-    update_tasks_file: Option<String>,
 }
 
 /// 路径管理器
@@ -177,28 +175,6 @@ impl PathManager {
         Ok(dir)
     }
 
-    pub fn get_updater_dir() -> Result<PathBuf> {
-        let dir = Self::resolve_named_dir(
-            Self::load_bootstrap().updater_dir.as_deref(),
-            Self::get_root_dir()?,
-            "updates",
-        )?;
-        Self::ensure_dir(&dir)?;
-        Ok(dir)
-    }
-
-    pub fn get_update_tasks_file() -> Result<PathBuf> {
-        let root = Self::get_root_dir()?;
-        let path = Self::load_bootstrap()
-            .update_tasks_file
-            .as_deref()
-            .map(|value| Self::resolve_override_path(value, &root))
-            .transpose()?
-            .unwrap_or_else(|| root.join("update_tasks.json"));
-        Self::ensure_parent_dir(&path)?;
-        Ok(path)
-    }
-
     pub fn get_store_file() -> Result<PathBuf> {
         let path = Self::get_config_dir()?.join("store.json");
         Self::ensure_parent_dir(&path)?;
@@ -331,16 +307,6 @@ impl PathManager {
                 &Self::get_kernels_dir()?.to_string_lossy().to_string(),
             )
             .context("写入注册表 KernelsDir 失败")?;
-            key.set_value(
-                "UpdaterDir",
-                &Self::get_updater_dir()?.to_string_lossy().to_string(),
-            )
-            .context("写入注册表 UpdaterDir 失败")?;
-            key.set_value(
-                "UpdateTasksFile",
-                &Self::get_update_tasks_file()?.to_string_lossy().to_string(),
-            )
-            .context("写入注册表 UpdateTasksFile 失败")?;
         }
 
         #[cfg(not(target_os = "windows"))]
@@ -391,7 +357,5 @@ impl BootstrapConfig {
             && self.cache_dir.is_none()
             && self.data_dir.is_none()
             && self.kernels_dir.is_none()
-            && self.updater_dir.is_none()
-            && self.update_tasks_file.is_none()
     }
 }

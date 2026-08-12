@@ -35,6 +35,11 @@ pub fn register_plugins(app_handle: &AppHandle) {
     // Register process plugin
     app_handle.plugin(tauri_plugin_process::init()).unwrap();
 
+    // Register Tauri's signed updater. Release builds inject the public key
+    // into tauri.conf.json before compilation.
+    #[cfg(desktop)]
+    app_handle.plugin(tauri_plugin_updater::Builder::new().build()).unwrap();
+
     // deep-link 插件
     app_handle.plugin(tauri_plugin_deep_link::init()).unwrap();
 

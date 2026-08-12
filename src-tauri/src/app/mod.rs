@@ -9,7 +9,6 @@ pub mod runtime_info;
 pub mod session_lock;
 pub mod setup;
 pub mod startup;
-pub mod startup_update;
 
 use crate::commands;
 use components::tray;

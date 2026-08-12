@@ -5,22 +5,19 @@ use std::path::{Path, PathBuf};
 use config::Config;
 use serde::Deserialize;
 
-// 引用配置加密模块（与运行时共享）
-#[path = "src/core/config/encryption/key_derivation.rs"]
-mod key_derivation;
-
-#[path = "src/core/config/encryption/crypto.rs"]
-mod crypto;
-
 // =============================================================================
 // 入口：构建脚本执行流程
 // =============================================================================
 
 fn main() {
+    println!("cargo:rerun-if-env-changed=SIMPRINT_WEBVIEW_MODE");
+
     // 1. 仅在生产环境下下载 / 准备 webview-fixed 目录中的资源
     #[cfg(feature = "production")]
     {
-        webview_assets::ensure_webview_fixed_downloaded();
+        if env::var("SIMPRINT_WEBVIEW_MODE").as_deref() == Ok("fixed-runtime") {
+            webview_assets::ensure_webview_fixed_downloaded();
+        }
     }
 
     // 2. 构建 Tauri 应用（处理 Windows manifest / 权限等）
@@ -28,9 +25,6 @@ fn main() {
 
     // 3. 为前端构建写入环境标记文件（.build-env）
     frontend_env::prepare_frontend_build_env();
-
-    // 4. 读取明文配置并生成加密后的二进制配置文件
-    config_encrypt::generate_encrypted_config();
 }
 
 // =============================================================================
@@ -77,43 +71,58 @@ mod webview_assets {
     /// Webview 配置结构体（用于 build.rs 中解析）
     #[derive(Deserialize)]
     struct WebviewConfig {
-        /// 下载的 URL（注意：字段名保持与配置文件中的拼写一致：downlaod_url）
-        #[serde(rename = "downlaod_url")]
+        x86_64_download_url: String,
+        aarch64_download_url: String,
+        x86_download_url: String,
+    }
+
+    struct TargetWebview {
         download_url: String,
+        runtime_directory: &'static str,
     }
 
     /// 确保 `webview-fixed` 目录已经从远端 ZIP 包解压完成
     ///
-    /// - 若目录已存在，则直接跳过，不重复下载
-    /// - 若目录不存在，则从指定 URL 下载 zip 并解压到 `webview-fixed/`
+    /// - 若当前目标架构的运行时目录已存在，则直接跳过
+    /// - 否则从该架构的 URL 下载 zip，并解压到共享的 `webview-fixed/`
     pub fn ensure_webview_fixed_downloaded() {
         let target_dir = Path::new("webview-fixed");
 
-        // 若目录已存在，则认为资源已经就绪，避免每次构建都重新下载
-        if target_dir.exists() {
-            return;
-        }
-
         // 优先尝试从当前环境的配置文件中读取下载地址
-        let url = detect_webview_download_url().unwrap_or_else(|| {
+        let target_webview = detect_target_webview().unwrap_or_else(|| {
             panic!(
-                "[BUILD ERROR] Failed to detect webview download URL from config file '{}'.\n\
-                 Please ensure the config file contains a valid [webview] section with 'downlaod_url' field.",
+                "[BUILD ERROR] Failed to detect the target WebView runtime from config file '{}'.\n\
+                 Please ensure [webview] contains download URLs for x86_64, aarch64 and x86.",
                 super::current_config_file_name()
             );
         });
 
-        if let Err(err) = download_and_extract_webview_fixed(&url, target_dir.to_path_buf()) {
+        // 三种架构的运行时可以共存；仅当当前目标架构的目录已存在时才跳过下载。
+        if target_dir.join(target_webview.runtime_directory).exists() {
+            return;
+        }
+
+        if let Err(err) = download_and_extract_webview_fixed(
+            &target_webview.download_url,
+            target_dir.to_path_buf(),
+        ) {
             // 构建脚本失败时直接 panic，阻止继续构建，以避免产生不完整的产物
             panic!("failed to download and extract webview-fixed assets: {err}");
         }
+
+        if !target_dir.join(target_webview.runtime_directory).exists() {
+            panic!(
+                "downloaded WebView archive does not contain expected runtime directory '{}'",
+                target_webview.runtime_directory
+            );
+        }
     }
 
-    /// 从当前构建环境对应的 `config.<env>.toml` 中解析 `[webview]` 段的 `downlaod_url`
+    /// 从当前构建目标和 `config.<env>.toml` 中选择对应的 WebView 固定运行时。
     ///
     /// 使用 config crate 进行 TOML 解析，替代手动字符串解析，提高可靠性和可维护性。
     /// 解析失败时返回 `None`，由调用方决定是否回退到默认值。
-    fn detect_webview_download_url() -> Option<String> {
+    fn detect_target_webview() -> Option<TargetWebview> {
         let config_file_name = super::current_config_file_name();
 
         // 使用 config crate 解析 TOML 文件
@@ -141,7 +150,24 @@ mod webview_assets {
             })
             .ok()?;
 
-        Some(webview_config.download_url)
+        match env::var("CARGO_CFG_TARGET_ARCH").ok()?.as_str() {
+            "x86_64" => Some(TargetWebview {
+                download_url: webview_config.x86_64_download_url,
+                runtime_directory: "Microsoft.WebView2.FixedVersionRuntime.151.0.4129.78.x64",
+            }),
+            "aarch64" => Some(TargetWebview {
+                download_url: webview_config.aarch64_download_url,
+                runtime_directory: "Microsoft.WebView2.FixedVersionRuntime.151.0.4129.78.arm64",
+            }),
+            "x86" => Some(TargetWebview {
+                download_url: webview_config.x86_download_url,
+                runtime_directory: "Microsoft.WebView2.FixedVersionRuntime.151.0.4129.78.x86",
+            }),
+            arch => {
+                eprintln!("[BUILD ERROR] Unsupported Windows target architecture: {arch}");
+                None
+            }
+        }
     }
 
     /// 从远程下载 webview-fixed.zip 并解压到指定目录
@@ -206,71 +232,7 @@ mod webview_assets {
 }
 
 // =============================================================================
-// 模块三：配置加密（将 TOML 加工为加密二进制）
-// =============================================================================
-
-mod config_encrypt {
-    use super::*;
-
-    /// 从 config.toml 生成加密后的二进制配置文件
-    pub fn generate_encrypted_config() {
-        // 不同环境使用不同的配置文件
-        // 当对应的配置文件发生变化时重新运行构建脚本
-        println!("cargo:rerun-if-changed=config.development.toml");
-        println!("cargo:rerun-if-changed=config.test.toml");
-        println!("cargo:rerun-if-changed=config.production.toml");
-
-        // 根据当前构建环境选择对应的配置文件
-        let config_file_name = current_config_file_name();
-
-        // 读取配置文件并生成加密的二进制文件，避免在可执行文件中直接出现明文配置
-        let out_dir = env::var("OUT_DIR").unwrap_or_else(|e| {
-            panic!(
-                "[BUILD ERROR] OUT_DIR environment variable is not set: {}\n\
-                 This build script must be run by Cargo, not directly.",
-                e
-            );
-        });
-
-        let config_path = Path::new(config_file_name);
-        let config_bytes = fs::read(config_path).unwrap_or_else(|e| {
-            panic!(
-                "[BUILD ERROR] Failed to read config file '{}': {}\n\
-                 Please ensure the config file exists and is readable.",
-                config_path.display(),
-                e
-            );
-        });
-
-        std::str::from_utf8(&config_bytes).unwrap_or_else(|e| {
-            panic!(
-                "[BUILD ERROR] Config file '{}' is not valid UTF-8: {}\n\
-                 Please ensure workflow/local scripts write this file with UTF-8 encoding.",
-                config_path.display(),
-                e
-            );
-        });
-
-        let encrypted = crypto::encrypt(&config_bytes).expect("Failed to encrypt config");
-
-        let out_path = Path::new(&out_dir).join("config_encrypted.bin");
-        println!(
-            "cargo:warning=Config encrypted file path: {}",
-            out_path.display()
-        );
-        fs::write(&out_path, &encrypted).unwrap_or_else(|e| {
-            panic!(
-                "[BUILD ERROR] Failed to write encrypted config to '{}': {}\n\
-                 Please check write permissions for OUT_DIR.",
-                out_path.display(),
-                e
-            );
-        });
-    }
-}
-
-// =============================================================================
-// 模块四：前端构建环境标记（.build-env）
+// 模块三：前端构建环境标记（.build-env）
 // =============================================================================
 
 mod frontend_env {
@@ -306,7 +268,7 @@ mod frontend_env {
 }
 
 // =============================================================================
-// 模块五：Tauri 应用构建（Windows manifest / 权限等）
+// 模块四：Tauri 应用构建（Windows manifest / 权限等）
 // =============================================================================
 
 mod tauri_build_pipeline {
@@ -319,9 +281,6 @@ mod tauri_build_pipeline {
             let is_dev = true; // 暂时跳过软件管理员申请，再后续评估再决定是否需要管理员。
 
             if !is_dev {
-                // 发布环境：需要管理员权限. (updater.exe manifest)
-                embed_resource::compile("windows/updater.rc", embed_resource::NONE);
-
                 // 发布环境：需要管理员权限. (主程序manifest)
                 let manifest = include_str!("windows/main.manifest");
                 let window_attributes =
@@ -335,7 +294,7 @@ mod tauri_build_pipeline {
                     );
                 });
             } else {
-                // 开发环境：不需要管理员权限. (updater.exe manifest)
+                // 开发环境：不需要管理员权限。
                 tauri_build::build();
             }
         }

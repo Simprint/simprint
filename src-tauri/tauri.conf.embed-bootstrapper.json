@@ -49,18 +49,13 @@
         "template": "./windows/nsis/installer.nsi",
         "sidebarImage": "./windows/assets/sidebarImage.bmp",
         "startMenuFolder": "Simprint",
-        "languages": [
-          "English",
-          "SimpChinese"
-        ]
+        "languages": ["English", "SimpChinese"]
       }
     }
   },
   "plugins": {
     "updater": {
-      "endpoints": [
-        "https://github.com/Simprint/simprint/releases/latest/download/latest.json"
-      ],
+      "endpoints": ["https://github.com/Simprint/simprint/releases/latest/download/latest.json"],
       "pubkey": "",
       "windows": {
         "installMode": "passive"
@@ -69,9 +64,7 @@
     "deep-link": {
       "desktop": [
         {
-          "schemes": [
-            "simprint"
-          ]
+          "schemes": ["simprint"]
         }
       ]
     }

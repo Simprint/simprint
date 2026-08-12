@@ -3,17 +3,13 @@ name: tauri-release-windows
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
 
 jobs:
-  build:
+  publish:
     runs-on: windows-2025
     permissions:
       contents: write
-
-    env:
-      ENV_NAME: production
-      RELEASE_TAG: ${{ github.ref_name }}
 
     steps:
       - name: Checkout
@@ -35,82 +31,219 @@ jobs:
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc,aarch64-pc-windows-msvc,i686-pc-windows-msvc
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Prepare app config
+      - name: Prepare production build
         shell: powershell
         env:
-          # Optional overrides. If these are not configured, the workflow
-          # will keep the defaults from src-tauri/config.example.toml.
-          APP_SERVER_BASE_URL: ${{ secrets.APP_SERVER_BASE_URL }}
-          APP_SERVER_VERSION: ${{ secrets.APP_SERVER_VERSION }}
-          APP_SERVER_SECRET_KEY: ${{ secrets.APP_SERVER_SECRET_KEY }}
-          APP_UPDATER_CHECK_URL: ${{ secrets.APP_UPDATER_CHECK_URL }}
-          APP_UPDATER_LATEST_JSON_URL: ${{ secrets.APP_UPDATER_LATEST_JSON_URL }}
-          APP_UPDATER_TEMP_DIR: ${{ secrets.APP_UPDATER_TEMP_DIR }}
-          APP_WEBVIEW_DOWNLOAD_URL: ${{ secrets.APP_WEBVIEW_DOWNLOAD_URL }}
+          TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
         run: |
-          Copy-Item "src-tauri/config.example.toml" "src-tauri/config.production.toml" -Force
-
-          $configPath = "src-tauri/config.production.toml"
-          $content = Get-Content $configPath -Raw
-
-          function Set-ConfigValue {
-            param(
-              [string]$Pattern,
-              [string]$Value
-            )
-
-            if ([string]::IsNullOrWhiteSpace($Value)) {
-              return
-            }
-
-            $escapedValue = $Value.Replace('\', '\\').Replace('"', '\"')
-            $script:content = [regex]::Replace(
-              $script:content,
-              $Pattern,
-              ('$1"{0}"' -f $escapedValue),
-              [System.Text.RegularExpressions.RegexOptions]::Multiline
-            )
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_UPDATER_PUBLIC_KEY)) {
+            throw "TAURI_UPDATER_PUBLIC_KEY is required"
+          }
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
+            throw "TAURI_SIGNING_PRIVATE_KEY is required"
           }
 
-          Set-ConfigValue '^(base_url\s*=\s*)".*"$' "${{ env.APP_SERVER_BASE_URL }}"
-          Set-ConfigValue '^(version\s*=\s*)".*"$' "${{ env.APP_SERVER_VERSION }}"
-          Set-ConfigValue '^(secret_key\s*=\s*)".*"$' "${{ env.APP_SERVER_SECRET_KEY }}"
-          Set-ConfigValue '^(check_url\s*=\s*)".*"$' "${{ env.APP_UPDATER_CHECK_URL }}"
-          Set-ConfigValue '^(latest_json_url\s*=\s*)".*"$' "${{ env.APP_UPDATER_LATEST_JSON_URL }}"
-          Set-ConfigValue '^(updater_temp_dir\s*=\s*)".*"$' "${{ env.APP_UPDATER_TEMP_DIR }}"
-          Set-ConfigValue '^(downlaod_url\s*=\s*)".*"$' "${{ env.APP_WEBVIEW_DOWNLOAD_URL }}"
+          Copy-Item "src-tauri/config.example.toml" "src-tauri/config.production.toml" -Force
 
-          $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-          $resolvedConfigPath = (Resolve-Path $configPath).Path
-          [System.IO.File]::WriteAllText($resolvedConfigPath, $content, $utf8NoBom)
-
-      - name: Use fixed Tauri config
+      - name: Read annotated tag notes
+        id: release_notes
         shell: powershell
         run: |
-          Copy-Item "src-tauri/tauri.conf.fixed.json" "src-tauri/tauri.conf.json" -Force
+          $notes = git for-each-ref --format='%(contents)' "refs/tags/${{ github.ref_name }}"
+          if ([string]::IsNullOrWhiteSpace($notes)) {
+            $notes = "See the assets below to download this version."
+          }
+          "body<<SIMPRINT_RELEASE_NOTES" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          $notes | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "SIMPRINT_RELEASE_NOTES" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
-      - name: Prepare version from tag
-        run: node deploy/prepare-version.mjs
-
-      - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+      - name: Prepare x64 embedBootstrapper config
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
+        run: |
+          node deploy/prepare-tauri-config.mjs embedBootstrapper x86_64-pc-windows-msvc
+          node deploy/prepare-version.mjs
+
+      - name: Publish x64 embedBootstrapper installer and create release
+        id: release
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ENV_NAME: production
+          SIMPRINT_WEBVIEW_MODE: embedBootstrapper
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           projectPath: .
-          args: --features production
+          tagName: ${{ github.ref_name }}
+          releaseName: ${{ github.ref_name }}
+          releaseBody: ${{ steps.release_notes.outputs.body }}
+          releaseDraft: true
+          prerelease: false
+          uploadUpdaterJson: true
+          uploadUpdaterSignatures: true
+          updaterJsonPreferNsis: true
+          releaseAssetNamePattern: Simprint_[version]_[arch]_embedBootstrapper[setup].[ext]
+          args: --features production --target x86_64-pc-windows-msvc
 
-      - name: Generate latest.json
-        run: node deploy/generate-latest-json.mjs
-
-      - name: Publish GitHub release assets
+      - name: Prepare ARM64 embedBootstrapper config
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: node deploy/publish-github-release.mjs
+          TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
+        run: |
+          node deploy/prepare-tauri-config.mjs embedBootstrapper aarch64-pc-windows-msvc
+          node deploy/prepare-version.mjs
+
+      - name: Publish ARM64 embedBootstrapper installer
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ENV_NAME: production
+          SIMPRINT_WEBVIEW_MODE: embedBootstrapper
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+        with:
+          projectPath: .
+          releaseId: ${{ steps.release.outputs.releaseId }}
+          tagName: ${{ github.ref_name }}
+          uploadUpdaterJson: true
+          uploadUpdaterSignatures: true
+          updaterJsonPreferNsis: true
+          releaseAssetNamePattern: Simprint_[version]_[arch]_embedBootstrapper[setup].[ext]
+          args: --features production --target aarch64-pc-windows-msvc
+
+      - name: Prepare x86 embedBootstrapper config
+        env:
+          TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
+        run: |
+          node deploy/prepare-tauri-config.mjs embedBootstrapper i686-pc-windows-msvc
+          node deploy/prepare-version.mjs
+
+      - name: Publish x86 embedBootstrapper installer
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ENV_NAME: production
+          SIMPRINT_WEBVIEW_MODE: embedBootstrapper
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+        with:
+          projectPath: .
+          releaseId: ${{ steps.release.outputs.releaseId }}
+          tagName: ${{ github.ref_name }}
+          uploadUpdaterJson: true
+          uploadUpdaterSignatures: true
+          updaterJsonPreferNsis: true
+          releaseAssetNamePattern: Simprint_[version]_[arch]_embedBootstrapper[setup].[ext]
+          args: --features production --target i686-pc-windows-msvc
+
+      - name: Verify latest.json contains all embedBootstrapper architectures
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $manifestDir = Join-Path $env:RUNNER_TEMP "simprint-updater-manifest"
+          New-Item -ItemType Directory -Path $manifestDir -Force | Out-Null
+          gh release download "${{ github.ref_name }}" --pattern "latest.json" --dir $manifestDir
+
+          $manifest = Get-Content (Join-Path $manifestDir "latest.json") -Raw | ConvertFrom-Json
+          $requiredPlatforms = @("windows-x86_64", "windows-aarch64", "windows-i686")
+
+          foreach ($platform in $requiredPlatforms) {
+            $entry = $manifest.platforms.PSObject.Properties[$platform]
+            if ($null -eq $entry) {
+              throw "latest.json is missing required updater platform '$platform'"
+            }
+            if ($entry.Value.url -notlike "*embedBootstrapper*") {
+              throw "latest.json platform '$platform' must point to an embedBootstrapper asset"
+            }
+            if ([string]::IsNullOrWhiteSpace($entry.Value.signature)) {
+              throw "latest.json platform '$platform' is missing its signature"
+            }
+          }
+
+          $fixedRuntimeEntries = @(
+            $manifest.platforms.PSObject.Properties |
+              Where-Object { $_.Value.url -like "*fixed-runtime*" }
+          )
+          if ($fixedRuntimeEntries.Count -ne 0) {
+            throw "latest.json must not contain fixed-runtime updater assets"
+          }
+
+      - name: Prepare x64 fixed-runtime config
+        env:
+          TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
+        run: |
+          node deploy/prepare-tauri-config.mjs fixed-runtime x86_64-pc-windows-msvc
+          node deploy/prepare-version.mjs
+
+      - name: Publish x64 fixed-runtime installer
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ENV_NAME: production
+          SIMPRINT_WEBVIEW_MODE: fixed-runtime
+        with:
+          projectPath: .
+          releaseId: ${{ steps.release.outputs.releaseId }}
+          tagName: ${{ github.ref_name }}
+          uploadUpdaterJson: false
+          uploadUpdaterSignatures: false
+          releaseAssetNamePattern: Simprint_[version]_[arch]_fixed-runtime[setup].[ext]
+          args: --features production --target x86_64-pc-windows-msvc
+
+      - name: Prepare ARM64 fixed-runtime config
+        env:
+          TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
+        run: |
+          node deploy/prepare-tauri-config.mjs fixed-runtime aarch64-pc-windows-msvc
+          node deploy/prepare-version.mjs
+
+      - name: Publish ARM64 fixed-runtime installer
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ENV_NAME: production
+          SIMPRINT_WEBVIEW_MODE: fixed-runtime
+        with:
+          projectPath: .
+          releaseId: ${{ steps.release.outputs.releaseId }}
+          tagName: ${{ github.ref_name }}
+          uploadUpdaterJson: false
+          uploadUpdaterSignatures: false
+          releaseAssetNamePattern: Simprint_[version]_[arch]_fixed-runtime[setup].[ext]
+          args: --features production --target aarch64-pc-windows-msvc
+
+      - name: Prepare x86 fixed-runtime config
+        env:
+          TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
+        run: |
+          node deploy/prepare-tauri-config.mjs fixed-runtime i686-pc-windows-msvc
+          node deploy/prepare-version.mjs
+
+      - name: Publish x86 fixed-runtime installer
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ENV_NAME: production
+          SIMPRINT_WEBVIEW_MODE: fixed-runtime
+        with:
+          projectPath: .
+          releaseId: ${{ steps.release.outputs.releaseId }}
+          tagName: ${{ github.ref_name }}
+          uploadUpdaterJson: false
+          uploadUpdaterSignatures: false
+          releaseAssetNamePattern: Simprint_[version]_[arch]_fixed-runtime[setup].[ext]
+          args: --features production --target i686-pc-windows-msvc
+
+      - name: Publish completed GitHub release
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ github.ref_name }}" --draft=false --latest

@@ -11,7 +11,7 @@ use tauri::AppHandle;
 use uuid::Uuid;
 
 use crate::core::error::Result;
-use crate::infrastructure::updater::planner::calculate_file_hash;
+use crate::core::utils::hash::calculate_file_hash;
 use crate::services::environment::ExtensionInfo;
 
 static REGISTRY_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));

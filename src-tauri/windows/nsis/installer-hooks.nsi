@@ -104,10 +104,6 @@ FunctionEnd
     Push $RuntimePathValue
     Call un.RemoveRuntimePathIfSafe
 
-    ReadRegStr $RuntimePathValue HKCU "Software\${PRODUCTNAME}\RuntimePaths" "UpdaterDir"
-    Push $RuntimePathValue
-    Call un.RemoveRuntimePathIfSafe
-
     ReadRegStr $RuntimePathValue HKCU "Software\${PRODUCTNAME}\RuntimePaths" "ConfigDir"
     Push $RuntimePathValue
     Call un.RemoveRuntimePathIfSafe

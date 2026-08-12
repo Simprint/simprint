@@ -1,8 +1,8 @@
 //! 内核下载模块
 
 use crate::core::error::Result;
+use crate::core::utils::hash::calculate_file_hash;
 use crate::domain::environment::{EnvironmentStatus, KernelDetail};
-use crate::infrastructure::updater::planner::calculate_file_hash;
 use std::fs;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;

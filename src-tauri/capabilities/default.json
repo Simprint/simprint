@@ -6,6 +6,7 @@
   "permissions": [
     "core:default",
     "process:default",
+    "updater:default",
     "opener:default",
     {
       "identifier": "opener:allow-open-path",
