@@ -18,7 +18,7 @@
   },
   "bundle": {
     "active": true,
-    "createUpdaterArtifacts": false,
+    "createUpdaterArtifacts": true,
     "targets": "nsis",
     "icon": [
       "icons/32x32.png",
@@ -55,7 +55,9 @@
   },
   "plugins": {
     "updater": {
-      "endpoints": ["https://github.com/Simprint/simprint/releases/latest/download/latest.json"],
+      "endpoints": [
+        "https://github.com/Simprint/simprint/releases/latest/download/latest-fixed.json"
+      ],
       "pubkey": "",
       "windows": {
         "installMode": "passive"

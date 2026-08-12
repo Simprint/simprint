@@ -11,11 +11,17 @@ use serde::Deserialize;
 
 fn main() {
     println!("cargo:rerun-if-env-changed=SIMPRINT_WEBVIEW_MODE");
+    println!("cargo:rerun-if-changed=tauri.conf.json");
+
+    let webview_mode =
+        env::var("SIMPRINT_WEBVIEW_MODE").unwrap_or_else(|_| "embedBootstrapper".to_string());
+    validate_selected_tauri_config(&webview_mode);
+    println!("cargo:rustc-env=SIMPRINT_WEBVIEW_MODE={webview_mode}");
 
     // 1. 仅在生产环境下下载 / 准备 webview-fixed 目录中的资源
     #[cfg(feature = "production")]
     {
-        if env::var("SIMPRINT_WEBVIEW_MODE").as_deref() == Ok("fixed-runtime") {
+        if webview_mode == "fixed-runtime" {
             webview_assets::ensure_webview_fixed_downloaded();
         }
     }
@@ -25,6 +31,105 @@ fn main() {
 
     // 3. 为前端构建写入环境标记文件（.build-env）
     frontend_env::prepare_frontend_build_env();
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SelectedTauriConfig {
+    bundle: SelectedBundleConfig,
+    plugins: SelectedPluginConfig,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SelectedBundleConfig {
+    create_updater_artifacts: bool,
+    windows: SelectedWindowsConfig,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SelectedWindowsConfig {
+    webview_install_mode: SelectedWebviewInstallMode,
+}
+
+#[derive(Deserialize)]
+struct SelectedWebviewInstallMode {
+    #[serde(rename = "type")]
+    kind: String,
+    path: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct SelectedPluginConfig {
+    updater: SelectedUpdaterConfig,
+}
+
+#[derive(Deserialize)]
+struct SelectedUpdaterConfig {
+    endpoints: Vec<String>,
+}
+
+fn validate_selected_tauri_config(mode: &str) {
+    let raw = fs::read_to_string("tauri.conf.json")
+        .unwrap_or_else(|err| panic!("failed to read selected Tauri config: {err}"));
+    let config: SelectedTauriConfig = serde_json::from_str(&raw)
+        .unwrap_or_else(|err| panic!("failed to parse selected Tauri config: {err}"));
+
+    let (expected_install_mode, expected_manifest) = match mode {
+        "embedBootstrapper" => ("embedBootstrapper", "latest.json"),
+        "fixed-runtime" => ("fixedRuntime", "latest-fixed.json"),
+        other => panic!(
+            "unsupported SIMPRINT_WEBVIEW_MODE '{other}'; expected embedBootstrapper or fixed-runtime"
+        ),
+    };
+
+    assert_eq!(
+        config.bundle.windows.webview_install_mode.kind, expected_install_mode,
+        "selected Tauri config does not match SIMPRINT_WEBVIEW_MODE '{mode}'"
+    );
+    assert!(
+        config.bundle.create_updater_artifacts,
+        "selected Tauri config must create signed updater artifacts"
+    );
+
+    let endpoint = config
+        .plugins
+        .updater
+        .endpoints
+        .first()
+        .unwrap_or_else(|| panic!("selected Tauri config is missing an updater endpoint"));
+    assert!(
+        endpoint.ends_with(expected_manifest),
+        "updater endpoint for mode '{mode}' must end with '{expected_manifest}'"
+    );
+
+    if mode == "fixed-runtime" {
+        let expected_runtime_directory = fixed_runtime_directory_for_target_arch();
+        let configured_path = config
+            .bundle
+            .windows
+            .webview_install_mode
+            .path
+            .as_deref()
+            .unwrap_or_else(|| panic!("fixed-runtime config is missing its WebView path"));
+        let normalized_path = configured_path.replace('\\', "/");
+
+        assert!(
+            normalized_path.trim_end_matches('/').ends_with(expected_runtime_directory),
+            "fixed-runtime path '{configured_path}' does not match target architecture directory '{expected_runtime_directory}'"
+        );
+    }
+}
+
+fn fixed_runtime_directory_for_target_arch() -> &'static str {
+    match env::var("CARGO_CFG_TARGET_ARCH").as_deref() {
+        Ok("x86_64") => "Microsoft.WebView2.FixedVersionRuntime.151.0.4129.78.x64",
+        Ok("aarch64") => "Microsoft.WebView2.FixedVersionRuntime.151.0.4129.78.arm64",
+        Ok("x86") => "Microsoft.WebView2.FixedVersionRuntime.151.0.4129.78.x86",
+        Ok(arch) => panic!("unsupported Windows target architecture '{arch}' for fixed-runtime"),
+        Err(err) => panic!("CARGO_CFG_TARGET_ARCH is unavailable: {err}"),
+    }
 }
 
 // =============================================================================
@@ -86,6 +191,10 @@ mod webview_assets {
     /// - 若当前目标架构的运行时目录已存在，则直接跳过
     /// - 否则从该架构的 URL 下载 zip，并解压到共享的 `webview-fixed/`
     pub fn ensure_webview_fixed_downloaded() {
+        println!(
+            "cargo:rerun-if-changed={}",
+            super::current_config_file_name()
+        );
         let target_dir = Path::new("webview-fixed");
 
         // 优先尝试从当前环境的配置文件中读取下载地址
@@ -153,15 +262,15 @@ mod webview_assets {
         match env::var("CARGO_CFG_TARGET_ARCH").ok()?.as_str() {
             "x86_64" => Some(TargetWebview {
                 download_url: webview_config.x86_64_download_url,
-                runtime_directory: "Microsoft.WebView2.FixedVersionRuntime.151.0.4129.78.x64",
+                runtime_directory: super::fixed_runtime_directory_for_target_arch(),
             }),
             "aarch64" => Some(TargetWebview {
                 download_url: webview_config.aarch64_download_url,
-                runtime_directory: "Microsoft.WebView2.FixedVersionRuntime.151.0.4129.78.arm64",
+                runtime_directory: super::fixed_runtime_directory_for_target_arch(),
             }),
             "x86" => Some(TargetWebview {
                 download_url: webview_config.x86_download_url,
-                runtime_directory: "Microsoft.WebView2.FixedVersionRuntime.151.0.4129.78.x86",
+                runtime_directory: super::fixed_runtime_directory_for_target_arch(),
             }),
             arch => {
                 eprintln!("[BUILD ERROR] Unsupported Windows target architecture: {arch}");
