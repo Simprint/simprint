@@ -42,12 +42,10 @@ pub async fn serve_on_with_shutdown<F>(
 where
     F: Future<Output = ()> + Send + 'static,
 {
-    let db = SvcCtx::create_db(&config.database).await?;
-    tracing::info!("Running embedded database migrations");
-    MIGRATOR.run(&db).await?;
-    tracing::info!("Embedded database migrations completed");
-
     let svc_ctx = SvcCtx::new(&config).await?;
+    tracing::info!("Running embedded database migrations");
+    MIGRATOR.run(&svc_ctx.db).await?;
+    tracing::info!("Embedded database migrations completed");
 
     init_encrypt_secret(&config).await;
     init_storage(&config).await;
