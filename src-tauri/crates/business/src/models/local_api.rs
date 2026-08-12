@@ -37,7 +37,7 @@ pub async fn upsert_local_api_settings(
     sqlx::query(
         r#"
         INSERT INTO user_local_api_settings (user_uuid, enabled, port, remote_access, cors_origins)
-        VALUES ($1, COALESCE($2, FALSE), COALESCE($3, 8080), COALESCE($4, FALSE), COALESCE($5, '[]'::jsonb))
+        VALUES ($1, COALESCE($2, FALSE), COALESCE($3, 8080), COALESCE($4, FALSE), COALESCE($5, '[]'))
         ON CONFLICT (user_uuid) DO UPDATE SET
             enabled = COALESCE($2, user_local_api_settings.enabled),
             port = COALESCE($3, user_local_api_settings.port),

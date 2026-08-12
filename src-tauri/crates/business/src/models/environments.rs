@@ -1,7 +1,7 @@
 use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool};
+use crate::database::{Db as Postgres, Pool, placeholders};
 
 use crate::dto::{
     EnvironmentAccountRowDto, EnvironmentConfigDto, EnvironmentCookieDto, EnvironmentDto,
@@ -344,7 +344,7 @@ pub async fn fetch_environments_base(
     // 关键词搜索
     if keyword.is_some() {
         conditions.push(format!(
-            "(e.name ILIKE ${} OR e.uuid::text ILIKE ${})",
+            "(LOWER(e.name) LIKE LOWER(${}) OR CAST(e.uuid AS TEXT) LIKE LOWER(${}))",
             param_index, param_index
         ));
         param_index += 1;
@@ -353,8 +353,11 @@ pub async fn fetch_environments_base(
     // 标签过滤
     if let Some(tags) = tag_uuids {
         if !tags.is_empty() {
-            conditions.push(format!("et.tag_uuid = ANY(${})", param_index));
-            param_index += 1;
+            conditions.push(format!(
+                "et.tag_uuid IN ({})",
+                placeholders(param_index, tags.len())
+            ));
+            param_index += tags.len();
         }
     }
 
@@ -387,7 +390,9 @@ pub async fn fetch_environments_base(
     }
     if let Some(tags) = tag_uuids {
         if !tags.is_empty() {
-            sql_query = sql_query.bind(tags);
+            for tag_uuid in tags {
+                sql_query = sql_query.bind(tag_uuid);
+            }
         }
     }
 
@@ -415,8 +420,8 @@ pub async fn fetch_environments(
                last_opened_at, created_at, updated_at, deleted_at
         FROM environments
         WHERE workspace_uuid = $1 AND team_uuid = $2
-          AND ($3::uuid IS NULL OR group_uuid = $3)
-          AND ($4::varchar IS NULL OR status = $4)
+          AND ($3 IS NULL OR group_uuid = $3)
+          AND ($4 IS NULL OR status = $4)
           AND deleted_at IS NULL
         ORDER BY created_at DESC
         LIMIT $5 OFFSET $6
@@ -481,7 +486,7 @@ pub async fn fetch_environments_count(
     // 关键词搜索
     if keyword.is_some() {
         conditions.push(format!(
-            "(e.name ILIKE ${} OR e.uuid::text ILIKE ${})",
+            "(LOWER(e.name) LIKE LOWER(${}) OR CAST(e.uuid AS TEXT) LIKE LOWER(${}))",
             param_index, param_index
         ));
         param_index += 1;
@@ -490,7 +495,10 @@ pub async fn fetch_environments_count(
     // 标签过滤
     if let Some(tags) = tag_uuids {
         if !tags.is_empty() {
-            conditions.push(format!("et.tag_uuid = ANY(${})", param_index));
+            conditions.push(format!(
+                "et.tag_uuid IN ({})",
+                placeholders(param_index, tags.len())
+            ));
         }
     }
 
@@ -515,7 +523,9 @@ pub async fn fetch_environments_count(
     }
     if let Some(tags) = tag_uuids {
         if !tags.is_empty() {
-            sql_query = sql_query.bind(tags);
+            for tag_uuid in tags {
+                sql_query = sql_query.bind(tag_uuid);
+            }
         }
     }
 
@@ -673,15 +683,22 @@ pub async fn batch_delete_environments(
     pool: &Pool<Postgres>,
     env_uuids: &[Uuid],
 ) -> Result<u64, Error> {
-    let result = sqlx::query(
+    if env_uuids.is_empty() {
+        return Ok(0);
+    }
+
+    let statement = format!(
         r#"
         UPDATE environments SET deleted_at = CURRENT_TIMESTAMP
-        WHERE uuid = ANY($1) AND deleted_at IS NULL
+        WHERE uuid IN ({}) AND deleted_at IS NULL
         "#,
-    )
-    .bind(env_uuids)
-    .execute(pool)
-    .await?;
+        placeholders(1, env_uuids.len())
+    );
+    let mut query = sqlx::query(&statement);
+    for uuid in env_uuids {
+        query = query.bind(uuid);
+    }
+    let result = query.execute(pool).await?;
 
     Ok(result.rows_affected())
 }
@@ -724,7 +741,7 @@ pub async fn fetch_deleted_environments_base(
     // 关键词搜索
     if keyword.is_some() {
         conditions.push(format!(
-            "(e.name ILIKE ${} OR e.uuid::text ILIKE ${})",
+            "(LOWER(e.name) LIKE LOWER(${}) OR CAST(e.uuid AS TEXT) LIKE LOWER(${}))",
             param_index, param_index
         ));
         param_index += 1;
@@ -788,7 +805,7 @@ pub async fn fetch_deleted_environments_count(
 
     if keyword.is_some() {
         conditions.push(format!(
-            "(e.name ILIKE ${} OR e.uuid::text ILIKE ${})",
+            "(LOWER(e.name) LIKE LOWER(${}) OR CAST(e.uuid AS TEXT) LIKE LOWER(${}))",
             param_index, param_index
         ));
         param_index += 1;
@@ -834,15 +851,22 @@ pub async fn batch_restore_environments(
     pool: &Pool<Postgres>,
     env_uuids: &[Uuid],
 ) -> Result<u64, Error> {
-    let result = sqlx::query(
+    if env_uuids.is_empty() {
+        return Ok(0);
+    }
+
+    let statement = format!(
         r#"
         UPDATE environments SET deleted_at = NULL
-        WHERE uuid = ANY($1) AND deleted_at IS NOT NULL
+        WHERE uuid IN ({}) AND deleted_at IS NOT NULL
         "#,
-    )
-    .bind(env_uuids)
-    .execute(pool)
-    .await?;
+        placeholders(1, env_uuids.len())
+    );
+    let mut query = sqlx::query(&statement);
+    for uuid in env_uuids {
+        query = query.bind(uuid);
+    }
+    let result = query.execute(pool).await?;
 
     Ok(result.rows_affected())
 }
@@ -895,42 +919,53 @@ pub async fn batch_permanent_delete_environments(
     pool: &Pool<Postgres>,
     env_uuids: &[Uuid],
 ) -> Result<u64, Error> {
+    if env_uuids.is_empty() {
+        return Ok(0);
+    }
+
     // 先删除关联数据
-    sqlx::query("DELETE FROM environment_tags WHERE environment_uuid = ANY($1)")
-        .bind(env_uuids)
-        .execute(pool)
-        .await?;
-
-    sqlx::query("DELETE FROM environment_urls WHERE environment_uuid = ANY($1)")
-        .bind(env_uuids)
-        .execute(pool)
-        .await?;
-
-    sqlx::query("DELETE FROM environment_cookies WHERE environment_uuid = ANY($1)")
-        .bind(env_uuids)
-        .execute(pool)
-        .await?;
-
-    sqlx::query("DELETE FROM environment_configs WHERE environment_uuid = ANY($1)")
-        .bind(env_uuids)
-        .execute(pool)
-        .await?;
-
-    sqlx::query("DELETE FROM environment_accounts WHERE environment_uuid = ANY($1)")
-        .bind(env_uuids)
-        .execute(pool)
-        .await?;
+    for table in [
+        "environment_tags",
+        "environment_urls",
+        "environment_cookies",
+        "environment_configs",
+        "environment_accounts",
+    ] {
+        delete_environment_relations(pool, table, env_uuids).await?;
+    }
 
     // `environment_extensions` 已在扩展系统重构后移除。
     // 环境的扩展现在通过 user/team/group 绑定动态合并，不再需要清理环境级关联。
 
     // 最后删除环境本身
-    let result = sqlx::query("DELETE FROM environments WHERE uuid = ANY($1)")
-        .bind(env_uuids)
-        .execute(pool)
-        .await?;
+    let statement = format!(
+        "DELETE FROM environments WHERE uuid IN ({})",
+        placeholders(1, env_uuids.len())
+    );
+    let mut query = sqlx::query(&statement);
+    for uuid in env_uuids {
+        query = query.bind(uuid);
+    }
+    let result = query.execute(pool).await?;
 
     Ok(result.rows_affected())
+}
+
+async fn delete_environment_relations(
+    pool: &Pool<Postgres>,
+    table: &str,
+    env_uuids: &[Uuid],
+) -> Result<(), Error> {
+    let statement = format!(
+        "DELETE FROM {table} WHERE environment_uuid IN ({})",
+        placeholders(1, env_uuids.len())
+    );
+    let mut query = sqlx::query(&statement);
+    for uuid in env_uuids {
+        query = query.bind(uuid);
+    }
+    query.execute(pool).await?;
+    Ok(())
 }
 
 // ============ Environment Configs ============
@@ -1004,17 +1039,20 @@ pub async fn fetch_environment_configs_by_uuids(
         return Ok(vec![]);
     }
 
-    let recs = sqlx::query_as::<_, EnvironmentConfigDto>(
+    let statement = format!(
         r#"
         SELECT id, environment_uuid, window_info, basic_settings, fingerprint_settings,
                device_settings, preference_settings, project_metadata, created_at, updated_at
         FROM environment_configs
-        WHERE environment_uuid = ANY($1)
+        WHERE environment_uuid IN ({})
         "#,
-    )
-    .bind(env_uuids)
-    .fetch_all(pool)
-    .await?;
+        placeholders(1, env_uuids.len())
+    );
+    let mut query = sqlx::query_as::<_, EnvironmentConfigDto>(&statement);
+    for uuid in env_uuids {
+        query = query.bind(uuid);
+    }
+    let recs = query.fetch_all(pool).await?;
 
     Ok(recs)
 }
@@ -1108,7 +1146,7 @@ pub async fn fetch_tags_for_environments(
         return Ok(vec![]);
     }
 
-    let recs = sqlx::query_as::<_, EnvironmentTagRowDto>(
+    let statement = format!(
         r#"
         SELECT 
             et.environment_uuid,
@@ -1125,13 +1163,16 @@ pub async fn fetch_tags_for_environments(
             t.deleted_at as tag_deleted_at
         FROM environment_tags et
         INNER JOIN tags t ON et.tag_uuid = t.uuid
-        WHERE et.environment_uuid = ANY($1) AND t.deleted_at IS NULL
+        WHERE et.environment_uuid IN ({}) AND t.deleted_at IS NULL
         ORDER BY t.sort_order, t.name
         "#,
-    )
-    .bind(env_uuids)
-    .fetch_all(pool)
-    .await?;
+        placeholders(1, env_uuids.len())
+    );
+    let mut query = sqlx::query_as::<_, EnvironmentTagRowDto>(&statement);
+    for uuid in env_uuids {
+        query = query.bind(uuid);
+    }
+    let recs = query.fetch_all(pool).await?;
 
     Ok(recs)
 }
@@ -1145,7 +1186,7 @@ pub async fn fetch_accounts_for_environments(
         return Ok(vec![]);
     }
 
-    let recs = sqlx::query_as::<_, EnvironmentAccountRowDto>(
+    let statement = format!(
         r#"
         SELECT 
             ea.environment_uuid,
@@ -1158,13 +1199,16 @@ pub async fn fetch_accounts_for_environments(
             pa.remark
         FROM environment_accounts ea
         INNER JOIN platform_accounts pa ON ea.account_uuid = pa.uuid
-        WHERE ea.environment_uuid = ANY($1) AND pa.deleted_at IS NULL
+        WHERE ea.environment_uuid IN ({}) AND pa.deleted_at IS NULL
         ORDER BY ea.sort_order
         "#,
-    )
-    .bind(env_uuids)
-    .fetch_all(pool)
-    .await?;
+        placeholders(1, env_uuids.len())
+    );
+    let mut query = sqlx::query_as::<_, EnvironmentAccountRowDto>(&statement);
+    for uuid in env_uuids {
+        query = query.bind(uuid);
+    }
+    let recs = query.fetch_all(pool).await?;
 
     Ok(recs)
 }
@@ -1178,16 +1222,19 @@ pub async fn fetch_groups_by_uuids(
         return Ok(vec![]);
     }
 
-    let recs = sqlx::query_as::<_, GroupRowDto>(
+    let statement = format!(
         r#"
         SELECT id, uuid, name, description, sort_order
         FROM groups
-        WHERE uuid = ANY($1) AND deleted_at IS NULL
+        WHERE uuid IN ({}) AND deleted_at IS NULL
         "#,
-    )
-    .bind(group_uuids)
-    .fetch_all(pool)
-    .await?;
+        placeholders(1, group_uuids.len())
+    );
+    let mut query = sqlx::query_as::<_, GroupRowDto>(&statement);
+    for uuid in group_uuids {
+        query = query.bind(uuid);
+    }
+    let recs = query.fetch_all(pool).await?;
 
     Ok(recs)
 }
@@ -1201,18 +1248,21 @@ pub async fn fetch_proxies_by_uuids(
         return Ok(vec![]);
     }
 
-    let recs = sqlx::query_as::<_, ProxyRowDto>(
+    let statement = format!(
         r#"
         SELECT id, uuid, name, host, port, proxy_type,
                username, password,
                country, city, status, latency, last_check_ip
         FROM proxies
-        WHERE uuid = ANY($1) AND deleted_at IS NULL
+        WHERE uuid IN ({}) AND deleted_at IS NULL
         "#,
-    )
-    .bind(proxy_uuids)
-    .fetch_all(pool)
-    .await?;
+        placeholders(1, proxy_uuids.len())
+    );
+    let mut query = sqlx::query_as::<_, ProxyRowDto>(&statement);
+    for uuid in proxy_uuids {
+        query = query.bind(uuid);
+    }
+    let recs = query.fetch_all(pool).await?;
 
     Ok(recs)
 }
@@ -1268,7 +1318,7 @@ pub async fn fetch_templates(
                system_info, kernel_info, config_json, usage_count, created_at, updated_at, deleted_at
         FROM templates
         WHERE (team_uuid = $1 OR (team_uuid IS NULL AND user_uuid = $2) OR is_public = TRUE)
-          AND ($3::boolean IS NULL OR is_public = $3)
+          AND ($3 IS NULL OR is_public = $3)
           AND deleted_at IS NULL
         ORDER BY usage_count DESC, created_at DESC
         LIMIT $4 OFFSET $5
@@ -1297,7 +1347,7 @@ pub async fn fetch_templates_count(
         SELECT COUNT(*)
         FROM templates
         WHERE (team_uuid = $1 OR (team_uuid IS NULL AND user_uuid = $2) OR is_public = TRUE)
-          AND ($3::boolean IS NULL OR is_public = $3)
+          AND ($3 IS NULL OR is_public = $3)
           AND deleted_at IS NULL
         "#,
     )
@@ -1475,17 +1525,20 @@ pub async fn fetch_environment_urls_by_uuids(
         return Ok(vec![]);
     }
 
-    let recs = sqlx::query_as::<_, EnvironmentUrlDto>(
+    let statement = format!(
         r#"
         SELECT id, environment_uuid, url, title, sort_order, created_at
         FROM environment_urls
-        WHERE environment_uuid = ANY($1)
+        WHERE environment_uuid IN ({})
         ORDER BY environment_uuid, sort_order, id
         "#,
-    )
-    .bind(env_uuids)
-    .fetch_all(pool)
-    .await?;
+        placeholders(1, env_uuids.len())
+    );
+    let mut query = sqlx::query_as::<_, EnvironmentUrlDto>(&statement);
+    for uuid in env_uuids {
+        query = query.bind(uuid);
+    }
+    let recs = query.fetch_all(pool).await?;
 
     Ok(recs)
 }
@@ -1615,17 +1668,20 @@ pub async fn fetch_environment_cookies_by_uuids(
         return Ok(vec![]);
     }
 
-    let recs = sqlx::query_as::<_, EnvironmentCookieDto>(
+    let statement = format!(
         r#"
         SELECT id, environment_uuid, site_input, domain, name, value, path, expires_at, http_only, secure, same_site, created_at
         FROM environment_cookies
-        WHERE environment_uuid = ANY($1)
+        WHERE environment_uuid IN ({})
         ORDER BY environment_uuid, site_input, domain, name
         "#,
-    )
-    .bind(env_uuids)
-    .fetch_all(pool)
-    .await?;
+        placeholders(1, env_uuids.len())
+    );
+    let mut query = sqlx::query_as::<_, EnvironmentCookieDto>(&statement);
+    for uuid in env_uuids {
+        query = query.bind(uuid);
+    }
+    let recs = query.fetch_all(pool).await?;
 
     Ok(recs)
 }

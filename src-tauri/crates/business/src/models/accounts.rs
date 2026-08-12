@@ -1,7 +1,7 @@
 use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool};
+use crate::database::{Db as Postgres, Pool, placeholders};
 
 use crate::dto::PlatformAccountDto;
 
@@ -59,14 +59,14 @@ pub async fn fetch_platform_accounts(
         FROM platform_accounts pa
         WHERE (pa.team_uuid = $1 OR (pa.team_uuid IS NULL AND pa.user_uuid = $2))
           AND (
-            $3::text IS NULL
-            OR pa.platform_url ILIKE $3
-            OR COALESCE(pa.platform_name, '') ILIKE $3
-            OR pa.account ILIKE $3
-            OR COALESCE(pa.remark, '') ILIKE $3
+            $3 IS NULL
+            OR pa.platform_url LIKE $3
+            OR COALESCE(pa.platform_name, '') LIKE $3
+            OR pa.account LIKE $3
+            OR COALESCE(pa.remark, '') LIKE $3
           )
-          AND ($4::varchar IS NULL OR pa.platform_name = $4)
-          AND ($5::varchar IS NULL OR pa.status = $5)
+          AND ($4 IS NULL OR pa.platform_name = $4)
+          AND ($5 IS NULL OR pa.status = $5)
           AND pa.deleted_at IS NULL
         ORDER BY pa.created_at DESC
         LIMIT $6 OFFSET $7
@@ -101,14 +101,14 @@ pub async fn fetch_platform_accounts_count(
         SELECT COUNT(*) FROM platform_accounts
         WHERE (team_uuid = $1 OR (team_uuid IS NULL AND user_uuid = $2))
           AND (
-            $3::text IS NULL
-            OR platform_url ILIKE $3
-            OR COALESCE(platform_name, '') ILIKE $3
-            OR account ILIKE $3
-            OR COALESCE(remark, '') ILIKE $3
+            $3 IS NULL
+            OR platform_url LIKE $3
+            OR COALESCE(platform_name, '') LIKE $3
+            OR account LIKE $3
+            OR COALESCE(remark, '') LIKE $3
           )
-          AND ($4::varchar IS NULL OR platform_name = $4)
-          AND ($5::varchar IS NULL OR status = $5)
+          AND ($4 IS NULL OR platform_name = $4)
+          AND ($5 IS NULL OR status = $5)
           AND deleted_at IS NULL
         "#,
     )
@@ -223,15 +223,22 @@ pub async fn batch_delete_platform_accounts(
     pool: &Pool<Postgres>,
     account_uuids: &[Uuid],
 ) -> Result<u64, Error> {
-    let result = sqlx::query(
+    if account_uuids.is_empty() {
+        return Ok(0);
+    }
+
+    let statement = format!(
         r#"
         UPDATE platform_accounts SET deleted_at = CURRENT_TIMESTAMP
-        WHERE uuid = ANY($1) AND deleted_at IS NULL
+        WHERE uuid IN ({}) AND deleted_at IS NULL
         "#,
-    )
-    .bind(account_uuids)
-    .execute(pool)
-    .await?;
+        placeholders(1, account_uuids.len())
+    );
+    let mut query = sqlx::query(&statement);
+    for uuid in account_uuids {
+        query = query.bind(uuid);
+    }
+    let result = query.execute(pool).await?;
 
     Ok(result.rows_affected())
 }

@@ -17,7 +17,7 @@ pub async fn insert_version(
             arch, package_format, requires_extract, created_at
         ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-            $13, $14, $15, NOW()
+            $13, $14, $15, CURRENT_TIMESTAMP
         ) RETURNING id
     ";
 
@@ -253,7 +253,7 @@ pub async fn update_version(
             file_size = COALESCE($8, file_size),
             status = COALESCE($9, status),
             is_latest = COALESCE($10, is_latest),
-            updated_at = NOW()
+            updated_at = CURRENT_TIMESTAMP
         WHERE id = $11
     ";
 
@@ -294,7 +294,7 @@ pub async fn set_as_latest_version(
 
     // 先取消其他版本的最新状态
     sqlx::query(
-        "UPDATE versions SET is_latest = false, updated_at = NOW()
+        "UPDATE versions SET is_latest = false, updated_at = CURRENT_TIMESTAMP
          WHERE type_id = $1 AND resource_name = $2 AND id != $3",
     )
     .bind(type_id)
@@ -304,7 +304,7 @@ pub async fn set_as_latest_version(
     .await?;
 
     // 设置当前版本为最新
-    let row = sqlx::query("UPDATE versions SET is_latest = true, updated_at = NOW() WHERE id = $1")
+    let row = sqlx::query("UPDATE versions SET is_latest = true, updated_at = CURRENT_TIMESTAMP WHERE id = $1")
         .bind(version_id)
         .execute(&mut *tx)
         .await?;

@@ -1,7 +1,7 @@
 ﻿use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool};
+use crate::database::{Db as Postgres, Pool, placeholders};
 
 use crate::dto::{RpaTaskDto, RpaTaskEnvironmentDto, RpaTaskRunDto, RpaTaskStepDto};
 
@@ -78,9 +78,9 @@ pub async fn fetch_rpa_tasks(
              , (SELECT COUNT(*) FROM rpa_task_environments rte WHERE rte.task_uuid = rpa_tasks.uuid) AS environment_count
         FROM rpa_tasks
         WHERE (team_uuid = $1 OR (team_uuid IS NULL AND user_uuid = $2))
-          AND ($3::varchar IS NULL OR name ILIKE $3 OR COALESCE(description, '') ILIKE $3)
-          AND ($4::varchar IS NULL OR status = $4)
-          AND ($5::varchar IS NULL OR trigger_type = $5)
+          AND ($3 IS NULL OR name LIKE $3 OR COALESCE(description, '') LIKE $3)
+          AND ($4 IS NULL OR status = $4)
+          AND ($5 IS NULL OR trigger_type = $5)
           AND deleted_at IS NULL
         ORDER BY created_at DESC
         LIMIT $6 OFFSET $7
@@ -112,9 +112,9 @@ pub async fn fetch_rpa_tasks_count(
         r#"
         SELECT COUNT(*) FROM rpa_tasks
         WHERE (team_uuid = $1 OR (team_uuid IS NULL AND user_uuid = $2))
-          AND ($3::varchar IS NULL OR status = $3)
-          AND ($4::varchar IS NULL OR trigger_type = $4)
-          AND ($5::varchar IS NULL OR name ILIKE $5 OR COALESCE(description, '') ILIKE $5)
+          AND ($3 IS NULL OR status = $3)
+          AND ($4 IS NULL OR trigger_type = $4)
+          AND ($5 IS NULL OR name LIKE $5 OR COALESCE(description, '') LIKE $5)
           AND deleted_at IS NULL
         "#,
     )
@@ -254,15 +254,22 @@ pub async fn batch_delete_rpa_tasks(
     pool: &Pool<Postgres>,
     task_uuids: &[Uuid],
 ) -> Result<u64, Error> {
-    let result = sqlx::query(
+    if task_uuids.is_empty() {
+        return Ok(0);
+    }
+
+    let statement = format!(
         r#"
         UPDATE rpa_tasks SET deleted_at = CURRENT_TIMESTAMP
-        WHERE uuid = ANY($1) AND deleted_at IS NULL
+        WHERE uuid IN ({}) AND deleted_at IS NULL
         "#,
-    )
-    .bind(task_uuids)
-    .execute(pool)
-    .await?;
+        placeholders(1, task_uuids.len())
+    );
+    let mut query = sqlx::query(&statement);
+    for uuid in task_uuids {
+        query = query.bind(uuid);
+    }
+    let result = query.execute(pool).await?;
 
     Ok(result.rows_affected())
 }
@@ -447,7 +454,7 @@ pub async fn fetch_rpa_task_runs(
                started_at, finished_at, duration_ms, result_summary, error_message, logs
         FROM rpa_task_runs
         WHERE task_uuid = $1
-          AND ($2::varchar IS NULL OR status = $2)
+          AND ($2 IS NULL OR status = $2)
         ORDER BY started_at DESC
         LIMIT $3 OFFSET $4
         "#,
@@ -472,7 +479,7 @@ pub async fn fetch_rpa_task_runs_count(
         r#"
         SELECT COUNT(*) FROM rpa_task_runs
         WHERE task_uuid = $1
-          AND ($2::varchar IS NULL OR status = $2)
+          AND ($2 IS NULL OR status = $2)
         "#,
     )
     .bind(task_uuid)
@@ -523,7 +530,7 @@ pub async fn update_rpa_task_run_status(
             error_message = $5,
             finished_at = CASE WHEN $1 IN ('completed', 'failed', 'stopped') THEN CURRENT_TIMESTAMP ELSE finished_at END,
             duration_ms = CASE WHEN $1 IN ('completed', 'failed', 'stopped')
-                          THEN EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - started_at)) * 1000
+                          THEN (julianday(CURRENT_TIMESTAMP) - julianday(started_at)) * 86400000
                           ELSE duration_ms END
         WHERE uuid = $6
         "#,

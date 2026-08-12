@@ -254,7 +254,7 @@ pub async fn mark_message_read(
     sqlx::query(
         r#"
         UPDATE user_messages
-        SET is_read = TRUE, read_at = NOW(), updated_at = NOW()
+        SET is_read = TRUE, read_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
         WHERE message_uuid = $1 AND user_uuid = $2 AND is_read = FALSE
         "#,
     )
@@ -278,7 +278,7 @@ pub async fn batch_mark_messages_read(
         sqlx::query(
             r#"
             UPDATE user_messages
-            SET is_read = TRUE, read_at = NOW(), updated_at = NOW()
+            SET is_read = TRUE, read_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
             WHERE message_uuid = $1 AND user_uuid = $2 AND is_read = FALSE
             "#,
         )
@@ -309,7 +309,7 @@ pub async fn handle_message(
     sqlx::query(
         r#"
         UPDATE user_messages
-        SET action_status = $1, action_at = NOW(), updated_at = NOW()
+        SET action_status = $1, action_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
         WHERE message_uuid = $2 AND user_uuid = $3
         "#,
     )
@@ -380,7 +380,7 @@ pub async fn delete_message(pool: &Pool<Postgres>, message_uuid: Uuid) -> Result
     sqlx::query(
         r#"
         UPDATE messages
-        SET deleted_at = NOW(), status = 'deleted', updated_at = NOW()
+        SET deleted_at = CURRENT_TIMESTAMP, status = 'deleted', updated_at = CURRENT_TIMESTAMP
         WHERE uuid = $1 AND deleted_at IS NULL
         "#,
     )

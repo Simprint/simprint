@@ -72,8 +72,8 @@ pub async fn fetch_user_group_permissions(
                created_at, updated_at
         FROM group_member_permissions
         WHERE user_uuid = $1
-          AND ($2::uuid IS NULL OR workspace_uuid = $2)
-          AND ($3::uuid IS NULL OR group_uuid = $3)
+          AND ($2 IS NULL OR workspace_uuid = $2)
+          AND ($3 IS NULL OR group_uuid = $3)
         ORDER BY created_at DESC
         "#,
     )

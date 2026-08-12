@@ -10,7 +10,6 @@ use crate::entitys::{
     VerifyPasswordResponse,
 };
 use crate::models::{
-    billing,
     user::{
         create_user_with_info, fetch_user_by_uuid, fetch_user_info_by_email,
         fetch_user_info_by_uuid, update_password, update_user_info,
@@ -88,9 +87,6 @@ pub async fn register_service(
     let quota = &svc_ctx.config.workspace_quota.default;
     let user_uuid = create_user_with_info(pool, user_id, payload, &password_hash, quota).await?;
 
-    // 5.1. 自动发放新用户优惠券（失败不影响注册流程）
-    let _ = issue_welcome_coupons(svc_ctx, user_uuid).await;
-
     // 6. 执行通用登录逻辑
     let (access_token, refresh_token, user_info) =
         common_login_logic(svc_ctx, user_uuid, payload.public_secret_key.as_ref()).await?;
@@ -119,31 +115,6 @@ pub async fn register_service(
         refresh_token,
         user_info,
     })
-}
-
-/// 自动发放新用户优惠券
-///
-/// 在用户注册时自动发放欢迎优惠券，失败不影响注册流程
-async fn issue_welcome_coupons(svc_ctx: &SvcCtx, user_uuid: Uuid) -> Result<(), anyhow::Error> {
-    // 新用户优惠券代码列表（可根据需要配置）
-    let welcome_coupon_codes = vec!["WELCOME10", "FIRST10"];
-
-    for coupon_code in welcome_coupon_codes {
-        // 查询优惠券
-        if let Some(coupon) = billing::fetch_coupon_by_code(&svc_ctx.db, coupon_code).await? {
-            // 发放优惠券给用户（继承优惠券的过期时间）
-            let _ = billing::insert_user_coupon(
-                &svc_ctx.db,
-                user_uuid,
-                coupon.uuid,
-                coupon.valid_until,
-            )
-            .await;
-            // 注意：如果用户已拥有该优惠券（重复发放），忽略错误
-        }
-    }
-
-    Ok(())
 }
 
 /// 用户登录服务（统一处理两种登录方式）

@@ -163,7 +163,7 @@ pub async fn update_team(
     description: Option<&str>,
     avatar_hash: Option<&str>,
 ) -> Result<(), Error> {
-    let mut query = String::from("UPDATE teams SET updated_at = NOW()");
+    let mut query = String::from("UPDATE teams SET updated_at = CURRENT_TIMESTAMP");
     let mut params: Vec<Box<dyn sqlx::Encode<'_, Postgres> + Send + Sync>> = vec![];
 
     if let Some(n) = name {
@@ -196,7 +196,7 @@ pub async fn update_team(
         sqlx::query(
             r#"
         UPDATE teams
-            SET name = $1, description = $2, avatar_hash = $3, updated_at = NOW()
+            SET name = $1, description = $2, avatar_hash = $3, updated_at = CURRENT_TIMESTAMP
             WHERE uuid = $4
         "#,
         )
@@ -210,7 +210,7 @@ pub async fn update_team(
         sqlx::query(
             r#"
         UPDATE teams
-            SET name = $1, description = $2, updated_at = NOW()
+            SET name = $1, description = $2, updated_at = CURRENT_TIMESTAMP
             WHERE uuid = $3
         "#,
         )
@@ -223,7 +223,7 @@ pub async fn update_team(
         sqlx::query(
             r#"
         UPDATE teams
-            SET name = $1, updated_at = NOW()
+            SET name = $1, updated_at = CURRENT_TIMESTAMP
             WHERE uuid = $2
         "#,
         )
@@ -271,7 +271,7 @@ pub async fn fetch_team_member_count(
 
     if keyword.is_some() {
         query.push_str(&format!(
-            " AND (ui.nickname ILIKE ${} OR ui.email ILIKE ${})",
+            " AND (ui.nickname LIKE ${} OR ui.email LIKE ${})",
             param_index, param_index
         ));
     }
@@ -346,7 +346,7 @@ pub async fn fetch_team_members(
 
     if keyword.is_some() {
         query.push_str(&format!(
-            " AND (ui.nickname ILIKE ${} OR ui.email ILIKE ${})",
+            " AND (ui.nickname LIKE ${} OR ui.email LIKE ${})",
             param_index, param_index
         ));
         param_index += 1;
@@ -463,7 +463,7 @@ pub async fn update_member_role(
     sqlx::query(
         r#"
         UPDATE team_members
-        SET role = $1, updated_at = NOW()
+        SET role = $1, updated_at = CURRENT_TIMESTAMP
         WHERE team_uuid = $2 AND user_uuid = $3 AND deleted_at IS NULL
         "#,
     )
@@ -508,7 +508,7 @@ pub async fn remove_team_member(
     sqlx::query(
         r#"
         UPDATE team_members
-        SET deleted_at = NOW(), status = 'inactive'
+        SET deleted_at = CURRENT_TIMESTAMP, status = 'inactive'
         WHERE team_uuid = $1 AND user_uuid = $2 AND deleted_at IS NULL
         "#,
     )
@@ -619,7 +619,7 @@ pub async fn update_invitation_status(
     sqlx::query(
         r#"
         UPDATE team_invitations
-        SET status = $1, updated_at = NOW()
+        SET status = $1, updated_at = CURRENT_TIMESTAMP
         WHERE uuid = $2 AND deleted_at IS NULL
         "#,
     )
@@ -647,7 +647,7 @@ pub async fn cancel_team_invitation(
     sqlx::query(
         r#"
         UPDATE team_invitations
-        SET status = 'cancelled', deleted_at = NOW()
+        SET status = 'cancelled', deleted_at = CURRENT_TIMESTAMP
         WHERE uuid = $1 AND deleted_at IS NULL
         "#,
     )
@@ -673,7 +673,6 @@ pub async fn accept_team_invitation(
         SELECT id, uuid, team_uuid, email, role, invited_by, token, expires_at, status, accepted_at, created_at, updated_at
         FROM team_invitations
         WHERE uuid = $1 AND deleted_at IS NULL
-        FOR UPDATE
         "#,
     )
     .bind(invitation_uuid)
@@ -702,7 +701,7 @@ pub async fn accept_team_invitation(
             invited_by = EXCLUDED.invited_by,
             status = 'active',
             deleted_at = NULL,
-            updated_at = NOW()
+            updated_at = CURRENT_TIMESTAMP
         "#,
     )
     .bind(invitation.team_uuid)
@@ -717,7 +716,7 @@ pub async fn accept_team_invitation(
     sqlx::query(
         r#"
         UPDATE team_invitations
-        SET status = 'accepted', accepted_at = NOW()
+        SET status = 'accepted', accepted_at = CURRENT_TIMESTAMP
         WHERE uuid = $1
         "#,
     )
@@ -744,7 +743,6 @@ pub async fn reject_team_invitation(
         SELECT id, uuid, team_uuid, email, role, invited_by, token, expires_at, status, accepted_at, created_at, updated_at
         FROM team_invitations
         WHERE uuid = $1 AND deleted_at IS NULL
-        FOR UPDATE
         "#,
     )
     .bind(invitation_uuid)
@@ -765,7 +763,7 @@ pub async fn reject_team_invitation(
     sqlx::query(
         r#"
         UPDATE team_invitations
-        SET status = 'rejected', updated_at = NOW()
+        SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
         WHERE uuid = $1
         "#,
     )

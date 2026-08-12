@@ -29,12 +29,10 @@ config = "0.15"
 tracing = "0.1"
 sqlx = { version = "0.8", features = [
     "sqlite",
-    "postgres",
     "runtime-tokio",
     "chrono",
     "json",
     "uuid",
-    "rust_decimal",
 ] }
 uuid = { version = "1.11.0", features = [
     "v4",
@@ -45,7 +43,3 @@ uuid = { version = "1.11.0", features = [
 lettre = "0.11"
 dashmap = "6.1.0"
 url = "2.5.4"
-rust_decimal = { version = "1.39.0", features = [
-    "serde-with-str",
-    "db-postgres",
-] }

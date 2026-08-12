@@ -1,7 +1,7 @@
 use sqlx::Error;
 use uuid::Uuid;
 
-use crate::database::{Db as Postgres, Pool};
+use crate::database::{Db as Postgres, Pool, placeholders};
 
 use crate::dto::{ProxyDto, ProxyHealthCheckDto};
 
@@ -61,8 +61,8 @@ pub async fn fetch_proxies(
                p.created_at, p.updated_at, p.deleted_at
         FROM proxies p
         WHERE p.workspace_uuid = $1
-          AND ($2::varchar IS NULL OR p.proxy_type = $2)
-          AND ($3::varchar IS NULL OR p.status = $3)
+          AND ($2 IS NULL OR p.proxy_type = $2)
+          AND ($3 IS NULL OR p.status = $3)
           AND p.deleted_at IS NULL
         ORDER BY p.created_at DESC
         LIMIT $5 OFFSET $6
@@ -90,8 +90,8 @@ pub async fn fetch_proxies_count(
         r#"
         SELECT COUNT(*) FROM proxies
         WHERE workspace_uuid = $1
-          AND ($2::varchar IS NULL OR proxy_type = $2)
-          AND ($3::varchar IS NULL OR status = $3)
+          AND ($2 IS NULL OR proxy_type = $2)
+          AND ($3 IS NULL OR status = $3)
           AND deleted_at IS NULL
         "#,
     )
@@ -238,15 +238,22 @@ pub async fn batch_delete_proxies(
     pool: &Pool<Postgres>,
     proxy_uuids: &[Uuid],
 ) -> Result<u64, Error> {
-    let result = sqlx::query(
+    if proxy_uuids.is_empty() {
+        return Ok(0);
+    }
+
+    let statement = format!(
         r#"
         UPDATE proxies SET deleted_at = CURRENT_TIMESTAMP
-        WHERE uuid = ANY($1) AND deleted_at IS NULL
+        WHERE uuid IN ({}) AND deleted_at IS NULL
         "#,
-    )
-    .bind(proxy_uuids)
-    .execute(pool)
-    .await?;
+        placeholders(1, proxy_uuids.len())
+    );
+    let mut query = sqlx::query(&statement);
+    for uuid in proxy_uuids {
+        query = query.bind(uuid);
+    }
+    let result = query.execute(pool).await?;
 
     Ok(result.rows_affected())
 }

@@ -70,13 +70,13 @@ pub async fn fetch_audit_logs(
         FROM audit_logs a
         LEFT JOIN user_infos ui ON a.user_uuid = ui.user_uuid
         WHERE (
-            ($2::uuid IS NULL OR a.team_uuid = $2)
+            ($2 IS NULL OR a.team_uuid = $2)
             OR (a.team_uuid IS NULL AND a.user_uuid = $1)
         )
-          AND ($3::uuid IS NULL OR a.user_uuid = $3)
-          AND ($4::text IS NULL OR COALESCE(a.details, '') ILIKE '%' || $4 || '%')
-          AND ($5::varchar IS NULL OR a.action = $5)
-          AND ($6::varchar IS NULL OR a.target_type = $6)
+          AND ($3 IS NULL OR a.user_uuid = $3)
+          AND ($4 IS NULL OR COALESCE(a.details, '') LIKE '%' || $4 || '%')
+          AND ($5 IS NULL OR a.action = $5)
+          AND ($6 IS NULL OR a.target_type = $6)
         ORDER BY a.created_at DESC
         LIMIT $7 OFFSET $8
         "#,
@@ -109,13 +109,13 @@ pub async fn fetch_audit_logs_count(
         r#"
         SELECT COUNT(*) FROM audit_logs
         WHERE (
-            ($2::uuid IS NULL OR team_uuid = $2)
+            ($2 IS NULL OR team_uuid = $2)
             OR (team_uuid IS NULL AND user_uuid = $1)
         )
-          AND ($3::uuid IS NULL OR user_uuid = $3)
-          AND ($4::text IS NULL OR COALESCE(details, '') ILIKE '%' || $4 || '%')
-          AND ($5::varchar IS NULL OR action = $5)
-          AND ($6::varchar IS NULL OR target_type = $6)
+          AND ($3 IS NULL OR user_uuid = $3)
+          AND ($4 IS NULL OR COALESCE(details, '') LIKE '%' || $4 || '%')
+          AND ($5 IS NULL OR action = $5)
+          AND ($6 IS NULL OR target_type = $6)
         "#,
     )
     .bind(current_user_uuid)
@@ -162,7 +162,7 @@ pub async fn fetch_audit_logs_count_by_date(
     let count: i64 = sqlx::query_scalar(
         r#"
         SELECT COUNT(*) FROM audit_logs
-        WHERE ($1::uuid IS NULL OR team_uuid = $1)
+        WHERE ($1 IS NULL OR team_uuid = $1)
           AND created_at::date = $2
         "#,
     )
@@ -183,7 +183,7 @@ pub async fn fetch_audit_logs_count_since_date(
     let count: i64 = sqlx::query_scalar(
         r#"
         SELECT COUNT(*) FROM audit_logs
-        WHERE ($1::uuid IS NULL OR team_uuid = $1)
+        WHERE ($1 IS NULL OR team_uuid = $1)
           AND created_at::date >= $2
         "#,
     )
@@ -204,7 +204,7 @@ pub async fn fetch_top_actions(
     let rows: Vec<(String, i64)> = sqlx::query_as(
         r#"
         SELECT action, COUNT(*) as count FROM audit_logs
-        WHERE ($1::uuid IS NULL OR team_uuid = $1)
+        WHERE ($1 IS NULL OR team_uuid = $1)
         GROUP BY action
         ORDER BY count DESC
         LIMIT $2
@@ -227,7 +227,7 @@ pub async fn fetch_top_target_types(
     let rows: Vec<(String, i64)> = sqlx::query_as(
         r#"
         SELECT target_type, COUNT(*) as count FROM audit_logs
-        WHERE ($1::uuid IS NULL OR team_uuid = $1)
+        WHERE ($1 IS NULL OR team_uuid = $1)
         GROUP BY target_type
         ORDER BY count DESC
         LIMIT $2

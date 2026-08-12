@@ -194,10 +194,10 @@ pub async fn fetch_visible_proxies_for_user_paginated(
         FROM proxies p
         WHERE p.workspace_uuid = $1
           AND p.deleted_at IS NULL
-          AND ($4::text IS NULL OR p.name ILIKE $4)
-          AND ($5::text IS NULL OR p.proxy_type = $5)
-          AND ($6::text IS NULL OR p.status = $6)
-          AND ($7::text IS NULL OR p.country = $7)
+          AND ($4 IS NULL OR p.name LIKE $4)
+          AND ($5 IS NULL OR p.proxy_type = $5)
+          AND ($6 IS NULL OR p.status = $6)
+          AND ($7 IS NULL OR p.country = $7)
           AND (
             EXISTS (
                 SELECT 1 FROM workspaces w
@@ -252,10 +252,10 @@ pub async fn fetch_visible_proxies_for_user_count(
         FROM proxies p
         WHERE p.workspace_uuid = $1
           AND p.deleted_at IS NULL
-          AND ($4::text IS NULL OR p.name ILIKE $4)
-          AND ($5::text IS NULL OR p.proxy_type = $5)
-          AND ($6::text IS NULL OR p.status = $6)
-          AND ($7::text IS NULL OR p.country = $7)
+          AND ($4 IS NULL OR p.name LIKE $4)
+          AND ($5 IS NULL OR p.proxy_type = $5)
+          AND ($6 IS NULL OR p.status = $6)
+          AND ($7 IS NULL OR p.country = $7)
           AND (
             EXISTS (
                 SELECT 1 FROM workspaces w

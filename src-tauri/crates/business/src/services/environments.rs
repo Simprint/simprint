@@ -690,21 +690,6 @@ pub async fn get_environments_service(
         accounts_map.insert(*env_uuid, accounts);
     }
 
-    // 批量查询扩展（为每个环境动态合并插件）
-    let mut extensions_map: HashMap<Uuid, Vec<crate::dto::environments::ExtensionSummaryDto>> =
-        HashMap::new();
-    for row in &filtered_env_rows {
-        let extensions = crate::services::extensions::get_environment_extensions_service(
-            &svc_ctx,
-            user_uuid,
-            team_uuid,
-            row.group_uuid,
-        )
-        .await
-        .unwrap_or_default();
-        extensions_map.insert(row.uuid, extensions);
-    }
-
     // 11. 组装完整数据（使用与环境详情一致的数据结构）
     let environments: Vec<crate::entitys::EnvironmentDetailResponse> = filtered_env_rows
         .into_iter()
@@ -769,7 +754,7 @@ pub async fn get_environments_service(
                 accounts: accounts_map.remove(&row.uuid).unwrap_or_default(),
                 group,
                 proxy,
-                extensions: extensions_map.remove(&row.uuid).unwrap_or_default(),
+                extensions: Vec::new(),
             }
         })
         .collect();
@@ -889,16 +874,6 @@ pub async fn get_environment_detail_service(
         None
     };
 
-    // 获取扩展列表
-    let extensions = crate::services::extensions::get_environment_extensions_service(
-        svc_ctx,
-        user_uuid,
-        team_uuid,
-        environment.group_uuid,
-    )
-    .await
-    .unwrap_or_default();
-
     Ok(crate::entitys::EnvironmentDetailResponse {
         environment,
         config,
@@ -908,7 +883,7 @@ pub async fn get_environment_detail_service(
         accounts,
         group,
         proxy,
-        extensions,
+        extensions: Vec::new(),
     })
 }
 

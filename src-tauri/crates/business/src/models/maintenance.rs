@@ -142,7 +142,7 @@ pub async fn get_active_maintenances(
         SELECT id, name, description, status, start_time, end_time, maintenance_type,
                created_at, updated_at
         FROM maintenances
-        WHERE status = 'active' AND start_time <= NOW() AND end_time >= NOW()
+        WHERE status = 'active' AND start_time <= CURRENT_TIMESTAMP AND end_time >= CURRENT_TIMESTAMP
         ORDER BY created_at DESC
         LIMIT 1
         "#,
@@ -164,8 +164,8 @@ pub async fn create_maintenances_table(pool: &Pool<Postgres>) -> Result<(), sqlx
             start_time TIMESTAMPTZ NOT NULL,
             end_time TIMESTAMPTZ NOT NULL,
             maintenance_type VARCHAR(20) NOT NULL,
-            created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-            updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
         );
 
         CREATE INDEX IF NOT EXISTS idx_maintenances_status ON maintenances(status);
